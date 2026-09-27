@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Формирователь привычек</title>
+<meta name="description" content="Привычка месяца, доосвоение, монеты и статистика — с облачным хранением и входом по почте." />
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #EDE3D2; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+  #root { min-height: 100vh; width: 100%; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- React + ReactDOM -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<!-- Supabase JS: облачное хранилище данных + вход по почте -->
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<!-- Код приложения уже заранее скомпилирован из JSX в обычный JS —
+     в браузере не происходит никакой транспиляции на лету -->
+<script>
+const { useState, useEffect, useRef, useCallback } = React;
+function Icon({ children, size = 20, color, strokeWidth = 2, fill = "none", viewBox = "0 0 24 24", style }) {
+  return /* @__PURE__ */ React.createElement(
+    "svg",
+    {
+      width: size,
+      height: size,
+      viewBox,
+      fill,
+      stroke: color || "currentColor",
+      strokeWidth,
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      style
+    },
+    children
+  );
+}
+const Home = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M3 10.5 12 3l9 7.5" }), /* @__PURE__ */ React.createElement("path", { d: "M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5" }));
+const BarChart3 = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M3 21h18" }), /* @__PURE__ */ React.createElement("rect", { x: "6", y: "12", width: "3", height: "8" }), /* @__PURE__ */ React.createElement("rect", { x: "12", y: "7", width: "3", height: "13" }), /* @__PURE__ */ React.createElement("rect", { x: "18", y: "3", width: "3", height: "17" }));
+const Library = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M12 5c-2.5-1.5-5.5-1.5-8-.3v14c2.5-1.2 5.5-1.2 8 .3V5Z" }), /* @__PURE__ */ React.createElement("path", { d: "M12 5c2.5-1.5 5.5-1.5 8-.3v14c-2.5-1.2-5.5-1.2-8 .3V5Z" }));
+const Wallet = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("rect", { x: "3", y: "6", width: "18", height: "13", rx: "2" }), /* @__PURE__ */ React.createElement("path", { d: "M16 12.5h2" }));
+const Plus = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M12 5v14M5 12h14" }));
+const X = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M18 6 6 18M6 6l12 12" }));
+const Check = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M20 6 9 17l-5-5" }));
+const Flame = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M12 2c1.2 3.8-2.6 5-2.6 8.4a2.6 2.6 0 0 0 5.2 0c0-.9-.5-1.7-.9-2.4 1.7 1 2.8 2.9 2.8 5A5.5 5.5 0 0 1 6 13c0-4.6 2.8-6.2 6-11Z" }));
+const Coins = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("circle", { cx: "9", cy: "9", r: "6" }), /* @__PURE__ */ React.createElement("circle", { cx: "15", cy: "15", r: "6" }));
+const Trash2 = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M4 7h16" }), /* @__PURE__ */ React.createElement("path", { d: "M10 7V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3" }), /* @__PURE__ */ React.createElement("path", { d: "M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" }), /* @__PURE__ */ React.createElement("path", { d: "M10 11v6M14 11v6" }));
+const ArrowRight = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M5 12h14M13 6l6 6-6 6" }));
+const ArrowLeftCircle = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "9" }), /* @__PURE__ */ React.createElement("path", { d: "M15 8l-4 4 4 4" }));
+const Star = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6L12 2Z" }));
+const Archive = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("rect", { x: "3", y: "4", width: "18", height: "4", rx: "1" }), /* @__PURE__ */ React.createElement("path", { d: "M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8" }), /* @__PURE__ */ React.createElement("path", { d: "M10 13h4" }));
+const Sparkles = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M12 3l1.2 3.6L17 8l-3.8 1.4L12 13l-1.2-3.6L7 8l3.8-1.4Z" }), /* @__PURE__ */ React.createElement("path", { d: "M19 14l.5 1.5L21 16l-1.5.5L19 18l-.5-1.5L17 16l1.5-.5Z" }));
+const Pencil = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M12.5 19.5H20" }), /* @__PURE__ */ React.createElement("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" }));
+const SUPABASE_URL = "https://dizgudyquytogskalhkm.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_kZA6t3BeNN9Fi0ZM5-5neQ_cwPCBCzb";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const pad = (n) => String(n).padStart(2, "0");
+const toISO = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const todayISO = () => toISO(/* @__PURE__ */ new Date());
+const thisYearMonth = () => {
+  const d = /* @__PURE__ */ new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+};
+const startOfWeek = (d) => {
+  const date = new Date(d);
+  const day = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+const WEEKDAYS_RU = ["\u041F\u043D", "\u0412\u0442", "\u0421\u0440", "\u0427\u0442", "\u041F\u0442", "\u0421\u0431", "\u0412\u0441"];
+const MONTHS_RU = [
+  "\u044F\u043D\u0432\u0430\u0440\u044F",
+  "\u0444\u0435\u0432\u0440\u0430\u043B\u044F",
+  "\u043C\u0430\u0440\u0442\u0430",
+  "\u0430\u043F\u0440\u0435\u043B\u044F",
+  "\u043C\u0430\u044F",
+  "\u0438\u044E\u043D\u044F",
+  "\u0438\u044E\u043B\u044F",
+  "\u0430\u0432\u0433\u0443\u0441\u0442\u0430",
+  "\u0441\u0435\u043D\u0442\u044F\u0431\u0440\u044F",
+  "\u043E\u043A\u0442\u044F\u0431\u0440\u044F",
+  "\u043D\u043E\u044F\u0431\u0440\u044F",
+  "\u0434\u0435\u043A\u0430\u0431\u0440\u044F"
+];
+const WEEKDAY_FULL_RU = [
+  "\u0412\u043E\u0441\u043A\u0440\u0435\u0441\u0435\u043D\u044C\u0435",
+  "\u041F\u043E\u043D\u0435\u0434\u0435\u043B\u044C\u043D\u0438\u043A",
+  "\u0412\u0442\u043E\u0440\u043D\u0438\u043A",
+  "\u0421\u0440\u0435\u0434\u0430",
+  "\u0427\u0435\u0442\u0432\u0435\u0440\u0433",
+  "\u041F\u044F\u0442\u043D\u0438\u0446\u0430",
+  "\u0421\u0443\u0431\u0431\u043E\u0442\u0430"
+];
+const MONTHS_NOM_RU = [
+  "\u042F\u043D\u0432\u0430\u0440\u044C",
+  "\u0424\u0435\u0432\u0440\u0430\u043B\u044C",
+  "\u041C\u0430\u0440\u0442",
+  "\u0410\u043F\u0440\u0435\u043B\u044C",
+  "\u041C\u0430\u0439",
+  "\u0418\u044E\u043D\u044C",
+  "\u0418\u044E\u043B\u044C",
+  "\u0410\u0432\u0433\u0443\u0441\u0442",
+  "\u0421\u0435\u043D\u0442\u044F\u0431\u0440\u044C",
+  "\u041E\u043A\u0442\u044F\u0431\u0440\u044C",
+  "\u041D\u043E\u044F\u0431\u0440\u044C",
+  "\u0414\u0435\u043A\u0430\u0431\u0440\u044C"
+];
+function formatTodayHeader() {
+  const d = /* @__PURE__ */ new Date();
+  return `${WEEKDAY_FULL_RU[d.getDay()]}, ${d.getDate()} ${MONTHS_RU[d.getMonth()]}`;
+}
+function monthLabel(iso) {
+  if (!iso) return "";
+  const ym = /^(\d{4})-(\d{2})$/.exec(iso);
+  if (ym) return `${MONTHS_NOM_RU[Number(ym[2]) - 1]} ${ym[1]}`;
+  const d = new Date(iso);
+  return `${MONTHS_NOM_RU[d.getMonth()]} ${d.getFullYear()}`;
+}
+function formatShortDate(iso) {
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS_RU[d.getMonth()]}`;
+}
+function logDates(log) {
+  return (log || []).map((entry) => typeof entry === "string" ? entry : entry.date);
+}
+const IMMUNITY_INTERVAL = 10;
+function isShielded(entry) {
+  return typeof entry !== "string" && entry.shielded === true;
+}
+function realEntries(log) {
+  return (log || []).filter((e) => !isShielded(e));
+}
+function immunityAvailable(habit) {
+  return ((habit == null ? void 0 : habit.immunityEarned) || 0) - ((habit == null ? void 0 : habit.immunityUsed) || 0);
+}
+function withImmunityAward(habit, oldDates, newDates) {
+  const before = Math.floor(calcStreak(oldDates) / IMMUNITY_INTERVAL);
+  const after = Math.floor(calcStreak(newDates) / IMMUNITY_INTERVAL);
+  if (after <= before) return habit;
+  return { ...habit, immunityEarned: (habit.immunityEarned || 0) + (after - before) };
+}
+function calcStreak(dateList) {
+  const set = new Set(dateList);
+  let cursor = /* @__PURE__ */ new Date();
+  if (!set.has(toISO(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  let streak = 0;
+  while (set.has(toISO(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+function calcWeekDone(log) {
+  const map = {};
+  (log || []).forEach((e) => {
+    const date = typeof e === "string" ? e : e.date;
+    const plan = typeof e === "string" ? null : e.plan || null;
+    map[date] = { plan, shielded: isShielded(e) };
+  });
+  const start = startOfWeek(/* @__PURE__ */ new Date());
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    const iso = toISO(d);
+    const entry = map[iso];
+    days.push({
+      label: WEEKDAYS_RU[i],
+      done: iso in map,
+      plan: (entry == null ? void 0 : entry.plan) || null,
+      shielded: (entry == null ? void 0 : entry.shielded) || false,
+      isFuture: d > /* @__PURE__ */ new Date() && iso !== todayISO()
+    });
+  }
+  return days;
+}
+function calcMonthCount(dateList) {
+  const now = /* @__PURE__ */ new Date();
+  return dateList.filter((s) => {
+    const d = new Date(s);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).length;
+}
+function calcYearCount(dateList) {
+  const now = /* @__PURE__ */ new Date();
+  return dateList.filter((s) => new Date(s).getFullYear() === now.getFullYear()).length;
+}
+const ICONS = ["\u{1F4A7}", "\u{1F4DA}", "\u{1F3C3}", "\u{1F9D8}", "\u{1F3A8}", "\u270D\uFE0F", "\u{1F957}", "\u{1F634}", "\u{1F6AD}", "\u{1F4AA}", "\u{1F3AF}", "\u{1F331}"];
+const COLORS = [
+  { id: "terracotta", hex: "#B97B4D" },
+  { id: "sage", hex: "#8B9471" },
+  { id: "clay", hex: "#A6664B" },
+  { id: "dustyrose", hex: "#9C6B72" },
+  { id: "stone", hex: "#6E7A6E" }
+];
+const STORAGE_KEY = "habit-tracker-state";
+const PROGRESS_LIMIT = 3;
+const MASTERED_TODAY_LIMIT = 5;
+const DEFAULT_STATE = {
+  habits: [],
+  // {id, name, icon, color, type: 'month'|'progress'|'mastered', createdAt}
+  logs: {},
+  // habitId -> [iso dates]
+  wallet: { balance: 0, transactions: [] },
+  // transactions: {id, amount, habitId, habitName, date}
+  masteredCount: 0
+};
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+function migrateTreasury(habits) {
+  const needsMigration = habits.some((h) => h.type === "mastered" && h.inTreasury === void 0);
+  if (!needsMigration) return habits;
+  const masteredSorted = habits.filter((h) => h.type === "mastered" && h.inTreasury === void 0).sort((a, b) => (b.masteredAt || "").localeCompare(a.masteredAt || ""));
+  const keepOnToday = new Set(masteredSorted.slice(0, MASTERED_TODAY_LIMIT).map((h) => h.id));
+  return habits.map(
+    (h) => h.type === "mastered" && h.inTreasury === void 0 ? { ...h, inTreasury: !keepOnToday.has(h.id) } : h
+  );
+}
+function StreakRing({ streak, size = 56, done }) {
+  const milestone = 30;
+  const pct = Math.min(streak / milestone, 1);
+  const r = (size - 8) / 2;
+  const c = 2 * Math.PI * r;
+  const ticks = [7, 14, 21];
+  return /* @__PURE__ */ React.createElement("div", { className: "ring-visual", style: { width: size, height: size } }, /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: `0 0 ${size} ${size}` }, /* @__PURE__ */ React.createElement(
+    "circle",
+    {
+      cx: size / 2,
+      cy: size / 2,
+      r,
+      fill: "none",
+      stroke: "var(--border-strong)",
+      strokeWidth: "4"
+    }
+  ), ticks.map((t) => {
+    const ang = t / milestone * 2 * Math.PI - Math.PI / 2;
+    const x1 = size / 2 + Math.cos(ang) * (r - 2);
+    const y1 = size / 2 + Math.sin(ang) * (r - 2);
+    const x2 = size / 2 + Math.cos(ang) * (r + 2);
+    const y2 = size / 2 + Math.sin(ang) * (r + 2);
+    return /* @__PURE__ */ React.createElement("line", { key: t, x1, y1, x2, y2, stroke: "var(--text-muted)", strokeWidth: "1.5" });
+  }), /* @__PURE__ */ React.createElement(
+    "circle",
+    {
+      cx: size / 2,
+      cy: size / 2,
+      r,
+      fill: "none",
+      stroke: done ? "var(--accent-gold)" : "var(--accent-green)",
+      strokeWidth: "4",
+      strokeLinecap: "round",
+      strokeDasharray: c,
+      strokeDashoffset: c - pct * c,
+      transform: `rotate(-90 ${size / 2} ${size / 2})`,
+      style: { transition: "stroke-dashoffset 0.5s ease" }
+    }
+  )), /* @__PURE__ */ React.createElement("div", { className: "ring-center" }, done ? /* @__PURE__ */ React.createElement(Check, { size: 20, color: "var(--accent-gold)", strokeWidth: 3 }) : streak > 0 ? /* @__PURE__ */ React.createElement("span", { className: "ring-streak-num" }, streak) : /* @__PURE__ */ React.createElement("span", { className: "ring-streak-num dim" }, "\xB7")));
+}
+function Firework({ id }) {
+  const particles = useRef(
+    Array.from({ length: 14 }, (_, i) => {
+      const angle = i / 14 * 2 * Math.PI + Math.random() * 0.3;
+      const dist = 46 + Math.random() * 30;
+      const color = COLORS[i % COLORS.length].hex;
+      return {
+        i,
+        dx: Math.cos(angle) * dist,
+        dy: Math.sin(angle) * dist,
+        color,
+        delay: Math.random() * 60,
+        size: 4 + Math.random() * 4
+      };
+    })
+  ).current;
+  return /* @__PURE__ */ React.createElement("div", { className: "firework-layer", key: id }, particles.map((p) => /* @__PURE__ */ React.createElement(
+    "span",
+    {
+      key: p.i,
+      className: "firework-particle",
+      style: {
+        "--dx": `${p.dx}px`,
+        "--dy": `${p.dy}px`,
+        background: p.color,
+        width: p.size,
+        height: p.size,
+        animationDelay: `${p.delay}ms`
+      }
+    }
+  )));
+}
+function HabitCard({ habit, log, big, onComplete }) {
+  const dates = logDates(log);
+  const done = dates.includes(todayISO());
+  const streak = calcStreak(dates);
+  const [burst, setBurst] = useState(0);
+  const size = big ? 64 : 52;
+  const hasPlans = !!(habit.planA && habit.planA.trim()) || !!(habit.planB && habit.planB.trim());
+  const todayEntry = (log || []).find((e) => (typeof e === "string" ? e : e.date) === todayISO());
+  const todayPlan = todayEntry && typeof todayEntry !== "string" ? todayEntry.plan : null;
+  const complete = (plan) => {
+    if (done) return;
+    setBurst((b) => b + 1);
+    onComplete(habit.id, plan);
+  };
+  const planALabel = habit.planA && habit.planA.trim() ? habit.planA.trim() : "\u041F\u043B\u0430\u043D \u0410";
+  const planBLabel = habit.planB && habit.planB.trim() ? habit.planB.trim() : "\u041F\u043B\u0430\u043D \u0411";
+  return /* @__PURE__ */ React.createElement("div", { className: `habit-card ${big ? "habit-card-big" : ""}`, style: { "--habit-color": habit.color } }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-relative" }, burst > 0 && /* @__PURE__ */ React.createElement(Firework, { id: burst }), /* @__PURE__ */ React.createElement("div", { className: "habit-card-row" }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-info" }, /* @__PURE__ */ React.createElement("div", { className: "habit-icon", style: { background: `${habit.color}22`, color: habit.color } }, habit.icon), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: big ? "habit-name-big" : "habit-name" }, habit.name), /* @__PURE__ */ React.createElement("div", { className: "habit-sub" }, streak > 0 ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Flame, { size: 13, style: { marginRight: 3, position: "relative", top: 2 } }), "\u0441\u0435\u0440\u0438\u044F ", streak, " ", streak === 1 ? "\u0434\u0435\u043D\u044C" : streak < 5 ? "\u0434\u043D\u044F" : "\u0434\u043D\u0435\u0439") : "\u043D\u0430\u0447\u043D\u0438 \u0441\u0435\u0440\u0438\u044E \u0441\u0435\u0433\u043E\u0434\u043D\u044F", immunityAvailable(habit) > 0 && /* @__PURE__ */ React.createElement("span", { className: "immunity-badge" }, " \xB7 \u{1F6E1}\uFE0F\xD7", immunityAvailable(habit))), habit.type === "month" && habit.monthAssignedAt && /* @__PURE__ */ React.createElement("div", { className: "habit-month-badge" }, "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043C\u0435\u0441\u044F\u0446\u0430: ", monthLabel(habit.monthAssignedAt)), habit.anchor && habit.anchor.trim() && /* @__PURE__ */ React.createElement("div", { className: "habit-anchor" }, "\u{1F517} ", habit.anchor.trim()), habit.purpose && habit.purpose.trim() && /* @__PURE__ */ React.createElement("div", { className: "habit-anchor" }, "\u{1F4AD} ", habit.purpose.trim()))), hasPlans ? /* @__PURE__ */ React.createElement(StreakRing, { streak, done, size }) : /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: "ring-btn",
+      style: { width: size, height: size },
+      onClick: () => complete(null),
+      disabled: done,
+      "aria-label": done ? "\u0423\u0436\u0435 \u043E\u0442\u043C\u0435\u0447\u0435\u043D\u043E \u0441\u0435\u0433\u043E\u0434\u043D\u044F" : "\u041E\u0442\u043C\u0435\u0442\u0438\u0442\u044C \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435"
+    },
+    /* @__PURE__ */ React.createElement(StreakRing, { streak, done, size })
+  )), hasPlans && /* @__PURE__ */ React.createElement("div", { className: "plan-row" }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: `plan-chip ${todayPlan === "A" ? "plan-chip-active" : ""}`,
+      disabled: done,
+      onClick: () => complete("A")
+    },
+    /* @__PURE__ */ React.createElement("span", { className: "plan-chip-emoji" }, "\u{1F947}"),
+    planALabel
+  ), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: `plan-chip ${todayPlan === "B" ? "plan-chip-active" : ""}`,
+      disabled: done,
+      onClick: () => complete("B")
+    },
+    /* @__PURE__ */ React.createElement("span", { className: "plan-chip-emoji" }, "\u2B50"),
+    planBLabel
+  ))));
+}
+function TodayView({ state, onComplete, goLibrary }) {
+  const month = state.habits.find((h) => h.type === "month");
+  const progress = state.habits.filter((h) => h.type === "progress");
+  const mastered = state.habits.filter((h) => h.type === "mastered" && !h.inTreasury).sort((a, b) => (b.masteredAt || "").localeCompare(a.masteredAt || "")).slice(0, MASTERED_TODAY_LIMIT);
+  return /* @__PURE__ */ React.createElement("div", { className: "screen" }, /* @__PURE__ */ React.createElement("div", { className: "today-header" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0421\u0435\u0433\u043E\u0434\u043D\u044F"), /* @__PURE__ */ React.createElement("h1", { className: "page-title" }, formatTodayHeader())), /* @__PURE__ */ React.createElement("div", { className: "wallet-pill" }, /* @__PURE__ */ React.createElement(Coins, { size: 15, color: "var(--accent-gold)" }), /* @__PURE__ */ React.createElement("span", null, state.wallet.balance))), /* @__PURE__ */ React.createElement("div", { className: "section" }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043C\u0435\u0441\u044F\u0446\u0430"), month ? /* @__PURE__ */ React.createElement(HabitCard, { habit: month, log: state.logs[month.id] || [], big: true, onComplete }) : /* @__PURE__ */ React.createElement(
+    EmptyState,
+    {
+      text: "\u041F\u043E\u043A\u0430 \u043D\u0435 \u0432\u044B\u0431\u0440\u0430\u043D\u0430. \u0417\u0430\u0432\u0435\u0434\u0438 \u0433\u043B\u0430\u0432\u043D\u0443\u044E \u0446\u0435\u043B\u044C \u043C\u0435\u0441\u044F\u0446\u0430 \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0435.",
+      actionLabel: "\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0443",
+      onAction: goLibrary
+    }
+  )), /* @__PURE__ */ React.createElement("div", { className: "section" }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, "\u041D\u0430 \u0434\u043E\u043E\u0441\u0432\u043E\u0435\u043D\u0438\u0438 ", progress.length > 0 && `\xB7 ${progress.length}/3`), progress.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "stack" }, progress.map((h) => /* @__PURE__ */ React.createElement(HabitCard, { key: h.id, habit: h, log: state.logs[h.id] || [], onComplete }))) : /* @__PURE__ */ React.createElement(
+    EmptyState,
+    {
+      text: "\u0417\u0434\u0435\u0441\u044C \u043F\u043E\u044F\u0432\u044F\u0442\u0441\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u0442\u044B \u0437\u0430\u043A\u0440\u0435\u043F\u043B\u044F\u0435\u0448\u044C \u043F\u043E\u0432\u0442\u043E\u0440\u043D\u043E.",
+      actionLabel: "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443",
+      onAction: goLibrary
+    }
+  )), mastered.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "section" }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, "\u041E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435 \xB7 ", mastered.length, "/", MASTERED_TODAY_LIMIT), /* @__PURE__ */ React.createElement("div", { className: "stack" }, mastered.map((h) => /* @__PURE__ */ React.createElement(HabitCard, { key: h.id, habit: h, log: state.logs[h.id] || [], onComplete }))), /* @__PURE__ */ React.createElement("p", { className: "hint", style: { marginTop: 8 } }, "\u041E\u0442\u043C\u0435\u0447\u0430\u0439 \u043A\u0430\u043A \u043E\u0431\u044B\u0447\u043D\u043E, \u0447\u0442\u043E\u0431\u044B \u043D\u0435 \u0437\u0430\u0431\u044B\u0432\u0430\u0442\u044C. \u0423\u0431\u0440\u0430\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443 \u0441 \u0433\u043B\u0430\u0432\u043D\u043E\u0433\u043E \u044D\u043A\u0440\u0430\u043D\u0430 \u043C\u043E\u0436\u043D\u043E \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0435.")), /* @__PURE__ */ React.createElement("div", { className: "summary-strip" }, /* @__PURE__ */ React.createElement(Archive, { size: 16, color: "var(--text-muted)" }), /* @__PURE__ */ React.createElement("span", null, "\u041E\u0441\u0432\u043E\u0435\u043D\u043E \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A: ", /* @__PURE__ */ React.createElement("b", null, state.habits.filter((h) => h.type === "mastered").length))));
+}
+function EmptyState({ text, actionLabel, onAction }) {
+  return /* @__PURE__ */ React.createElement("div", { className: "empty-state" }, /* @__PURE__ */ React.createElement("p", null, text), actionLabel && /* @__PURE__ */ React.createElement("button", { className: "btn-ghost", onClick: onAction }, actionLabel, " ", /* @__PURE__ */ React.createElement(ArrowRight, { size: 14 })));
+}
+function StatsView({ state, onBackfill, onRemoveEntry, onUseImmunity }) {
+  var _a, _b, _c;
+  const trackable = state.habits.filter((h) => h.type !== "planned");
+  const [filter, setFilter] = useState("active");
+  const filtered = trackable.filter((h) => filter === "mastered" ? h.type === "mastered" : h.type !== "mastered");
+  const [selected, setSelected] = useState(((_a = filtered[0]) == null ? void 0 : _a.id) || null);
+  useEffect(() => {
+    var _a2;
+    if (!filtered.find((h) => h.id === selected)) {
+      setSelected(((_a2 = filtered[0]) == null ? void 0 : _a2.id) || null);
+    }
+  }, [state.habits.length, filter]);
+  const habit = filtered.find((h) => h.id === selected);
+  const log = habit ? state.logs[habit.id] || [] : [];
+  const allDates = logDates(log);
+  const realDates = logDates(realEntries(log));
+  const streak = habit ? calcStreak(allDates) : 0;
+  const week = habit ? calcWeekDone(log) : [];
+  const weekDone = week.filter((d) => d.done).length;
+  const monthCount = habit ? calcMonthCount(realDates) : 0;
+  const yearCount = habit ? calcYearCount(realDates) : 0;
+  const planACount = log.filter((e) => typeof e !== "string" && e.plan === "A").length;
+  const planBCount = log.filter((e) => typeof e !== "string" && e.plan === "B").length;
+  const hasPlans = habit && (habit.planA && habit.planA.trim() || habit.planB && habit.planB.trim());
+  const immunity = habit ? immunityAvailable(habit) : 0;
+  return /* @__PURE__ */ React.createElement("div", { className: "screen" }, /* @__PURE__ */ React.createElement("div", { className: "page-header" }, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430"), /* @__PURE__ */ React.createElement("h1", { className: "page-title" }, "\u041A\u0430\u043A \u043F\u0440\u043E\u0434\u0432\u0438\u0433\u0430\u044E\u0442\u0441\u044F \u0434\u0435\u043B\u0430")), trackable.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { text: "\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A \u0434\u043B\u044F \u043E\u0442\u0441\u043B\u0435\u0436\u0438\u0432\u0430\u043D\u0438\u044F." }) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "view-toggle", style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("button", { className: `view-toggle-btn ${filter === "active" ? "view-toggle-btn-active" : ""}`, onClick: () => setFilter("active") }, "\u0412 \u043F\u0440\u043E\u0446\u0435\u0441\u0441\u0435"), /* @__PURE__ */ React.createElement("button", { className: `view-toggle-btn ${filter === "mastered" ? "view-toggle-btn-active" : ""}`, onClick: () => setFilter("mastered") }, "\u041E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435")), filtered.length === 0 ? /* @__PURE__ */ React.createElement(
+    EmptyState,
+    {
+      text: filter === "mastered" ? "\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u043E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0445 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A." : "\u0412\u0441\u0435 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u0443\u0436\u0435 \u043E\u0441\u0432\u043E\u0435\u043D\u044B \u2014 \u0437\u0430\u0433\u043B\u044F\u043D\u0438 \u0432\u043E \u0432\u043A\u043B\u0430\u0434\u043A\u0443 \xAB\u041E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435\xBB."
+    }
+  ) : /* @__PURE__ */ React.createElement("div", { className: "habit-selector" }, filtered.map((h) => /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      key: h.id,
+      className: `chip ${selected === h.id ? "chip-active" : ""}`,
+      style: selected === h.id ? { borderColor: h.color, color: h.color } : {},
+      onClick: () => setSelected(h.id)
+    },
+    /* @__PURE__ */ React.createElement("span", null, h.icon),
+    " ",
+    h.name
+  ))), habit && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "stats-grid" }, /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, realEntries(log).length), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u0432\u0441\u0435\u0433\u043E \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u043E")), /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, /* @__PURE__ */ React.createElement(Flame, { size: 20, style: { marginRight: 4, position: "relative", top: -2 }, color: "var(--accent-gold)" }), streak), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u0442\u0435\u043A\u0443\u0449\u0430\u044F \u0441\u0435\u0440\u0438\u044F"))), /* @__PURE__ */ React.createElement("div", { className: "immunity-strip" }, "\u{1F6E1}\uFE0F \u0418\u043C\u043C\u0443\u043D\u0438\u0442\u0435\u0442: ", /* @__PURE__ */ React.createElement("b", null, immunity), /* @__PURE__ */ React.createElement("span", { className: "hint", style: { margin: 0 } }, " \xB7 +1 \u0437\u0430 \u043A\u0430\u0436\u0434\u044B\u0435 ", IMMUNITY_INTERVAL, " \u0434\u043D\u0435\u0439 \u043F\u043E\u0434\u0440\u044F\u0434")), /* @__PURE__ */ React.createElement("div", { className: "section-label", style: { marginTop: 20 } }, "\u042D\u0442\u0430 \u043D\u0435\u0434\u0435\u043B\u044F \xB7 ", weekDone, "/7"), /* @__PURE__ */ React.createElement("div", { className: "week-row" }, week.map((d, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: `week-dot ${d.done ? "week-dot-done" : ""} ${d.shielded ? "week-dot-shielded" : ""} ${hasPlans || week.some((x) => x.shielded) ? "week-dot-tall" : ""}` }, /* @__PURE__ */ React.createElement("span", { className: "week-dot-day" }, d.label), /* @__PURE__ */ React.createElement("span", { className: "week-dot-emoji" }, d.shielded ? "\u{1F6E1}\uFE0F" : d.done && hasPlans && d.plan ? d.plan === "A" ? "\u{1F947}" : "\u2B50" : "")))), /* @__PURE__ */ React.createElement("div", { className: "stats-grid", style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, monthCount), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u0432 \u044D\u0442\u043E\u043C \u043C\u0435\u0441\u044F\u0446\u0435")), /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, yearCount), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u0432 \u044D\u0442\u043E\u043C \u0433\u043E\u0434\u0443"))), hasPlans && /* @__PURE__ */ React.createElement("div", { className: "plan-split" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F947} ", ((_b = habit.planA) == null ? void 0 : _b.trim()) || "\u041F\u043B\u0430\u043D \u0410", ": ", /* @__PURE__ */ React.createElement("b", null, planACount)), /* @__PURE__ */ React.createElement("span", null, "\u2B50 ", ((_c = habit.planB) == null ? void 0 : _c.trim()) || "\u041F\u043B\u0430\u043D \u0411", ": ", /* @__PURE__ */ React.createElement("b", null, planBCount))), /* @__PURE__ */ React.createElement(
+    HistorySection,
+    {
+      habit,
+      log,
+      hasPlans,
+      immunity,
+      onBackfill: (date, plan) => onBackfill(habit.id, date, plan),
+      onRemoveEntry: (date) => onRemoveEntry(habit.id, date),
+      onUseImmunity: (date) => onUseImmunity(habit.id, date)
+    }
+  ))));
+}
+function HistorySection({ habit, log, hasPlans, immunity, onBackfill, onRemoveEntry, onUseImmunity }) {
+  var _a, _b;
+  const [showForm, setShowForm] = useState(false);
+  const [date, setDate] = useState("");
+  const [plan, setPlan] = useState(null);
+  const [mode, setMode] = useState("done");
+  const yesterday = (() => {
+    const d = /* @__PURE__ */ new Date();
+    d.setDate(d.getDate() - 1);
+    return toISO(d);
+  })();
+  const noPastDays = habit.createdAt && habit.createdAt > yesterday;
+  const minDate = habit.createdAt && habit.createdAt <= yesterday ? habit.createdAt : void 0;
+  const sorted = [...log].sort((a, b) => {
+    const da = typeof a === "string" ? a : a.date;
+    const db = typeof b === "string" ? b : b.date;
+    return db.localeCompare(da);
+  });
+  const existingDates = new Set(logDates(log));
+  const dateTaken = date && existingDates.has(date);
+  const canSubmitDone = date && !dateTaken && (!hasPlans || plan);
+  const canSubmitImmunity = date && !dateTaken && immunity > 0;
+  const submit = () => {
+    if (mode === "immunity") {
+      if (!canSubmitImmunity) return;
+      onUseImmunity(date);
+    } else {
+      if (!canSubmitDone) return;
+      onBackfill(date, hasPlans ? plan : null);
+    }
+    setDate("");
+    setPlan(null);
+    setMode("done");
+    setShowForm(false);
+  };
+  return /* @__PURE__ */ React.createElement("div", { className: "section", style: { marginTop: 20 } }, /* @__PURE__ */ React.createElement("div", { className: "page-header-row", style: { marginBottom: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "section-label", style: { marginBottom: 0 } }, "\u0418\u0441\u0442\u043E\u0440\u0438\u044F"), /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: () => setShowForm((v) => !v) }, /* @__PURE__ */ React.createElement(Plus, { size: 12 }), " \u041F\u0440\u043E\u0448\u0435\u0434\u0448\u0438\u0439 \u0434\u0435\u043D\u044C")), showForm && /* @__PURE__ */ React.createElement("div", { className: "backfill-form" }, noPastDays ? /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u042D\u0442\u0430 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0430 \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u2014 \u043F\u0440\u043E\u0448\u0435\u0434\u0448\u0438\u0445 \u0434\u043D\u0435\u0439 \u0434\u043B\u044F \u043E\u0442\u043C\u0435\u0442\u043A\u0438 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "date",
+      className: "text-input",
+      value: date,
+      max: yesterday,
+      min: minDate,
+      onChange: (e) => setDate(e.target.value)
+    }
+  ), dateTaken && /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u042D\u0442\u043E\u0442 \u0434\u0435\u043D\u044C \u0443\u0436\u0435 \u043E\u0442\u043C\u0435\u0447\u0435\u043D."), /* @__PURE__ */ React.createElement("div", { className: "mode-row" }, /* @__PURE__ */ React.createElement("button", { className: `mode-chip ${mode === "done" ? "mode-chip-active" : ""}`, onClick: () => setMode("done") }, "\u0412\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u043E"), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: `mode-chip ${mode === "immunity" ? "mode-chip-active" : ""}`,
+      disabled: immunity <= 0,
+      onClick: () => setMode("immunity")
+    },
+    "\u{1F6E1}\uFE0F \u0418\u043C\u043C\u0443\u043D\u0438\u0442\u0435\u0442 (",
+    immunity,
+    ")"
+  )), mode === "done" && hasPlans && /* @__PURE__ */ React.createElement("div", { className: "plan-row", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: `plan-chip ${plan === "A" ? "plan-chip-active" : ""}`,
+      onClick: () => setPlan("A")
+    },
+    /* @__PURE__ */ React.createElement("span", { className: "plan-chip-emoji" }, "\u{1F947}"),
+    ((_a = habit.planA) == null ? void 0 : _a.trim()) || "\u041F\u043B\u0430\u043D \u0410"
+  ), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: `plan-chip ${plan === "B" ? "plan-chip-active" : ""}`,
+      onClick: () => setPlan("B")
+    },
+    /* @__PURE__ */ React.createElement("span", { className: "plan-chip-emoji" }, "\u2B50"),
+    ((_b = habit.planB) == null ? void 0 : _b.trim()) || "\u041F\u043B\u0430\u043D \u0411"
+  )), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: "btn-primary",
+      style: { marginTop: 12 },
+      disabled: mode === "immunity" ? !canSubmitImmunity : !canSubmitDone,
+      onClick: submit
+    },
+    mode === "immunity" ? "\u0417\u0430\u0449\u0438\u0442\u0438\u0442\u044C \u0434\u0435\u043D\u044C \u0438\u043C\u043C\u0443\u043D\u0438\u0442\u0435\u0442\u043E\u043C" : "\u041E\u0442\u043C\u0435\u0442\u0438\u0442\u044C \u0434\u0435\u043D\u044C"
+  ), /* @__PURE__ */ React.createElement("p", { className: "hint" }, mode === "immunity" ? "\u0421\u0435\u0440\u0438\u044F \u043D\u0435 \u043F\u0440\u0435\u0440\u0432\u0451\u0442\u0441\u044F, \u043D\u043E \u043C\u043E\u043D\u0435\u0442\u044B \u0437\u0430 \u044D\u0442\u043E\u0442 \u0434\u0435\u043D\u044C \u043D\u0435 \u043D\u0430\u0447\u0438\u0441\u043B\u044F\u044E\u0442\u0441\u044F." : "\u0417\u0430 \u044D\u0442\u043E\u0442 \u0434\u0435\u043D\u044C \u0442\u043E\u0436\u0435 \u043D\u0430\u0447\u0438\u0441\u043B\u0438\u0442\u0441\u044F 10 \u043C\u043E\u043D\u0435\u0442 \u2014 \u043A\u0430\u043A \u0437\u0430 \u043E\u0431\u044B\u0447\u043D\u0443\u044E \u043E\u0442\u043C\u0435\u0442\u043A\u0443."))), sorted.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { text: "\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u043E\u0442\u043C\u0435\u0442\u043E\u043A \u043F\u043E \u044D\u0442\u043E\u0439 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0435." }) : /* @__PURE__ */ React.createElement("div", { className: "tx-list" }, sorted.slice(0, 30).map((entry) => {
+    var _a2, _b2;
+    const d = typeof entry === "string" ? entry : entry.date;
+    const p = typeof entry === "string" ? null : entry.plan;
+    const shielded = isShielded(entry);
+    const planText = hasPlans && p ? ` (${p === "A" ? ((_a2 = habit.planA) == null ? void 0 : _a2.trim()) || "\u041F\u043B\u0430\u043D \u0410" : ((_b2 = habit.planB) == null ? void 0 : _b2.trim()) || "\u041F\u043B\u0430\u043D \u0411"})` : "";
+    return /* @__PURE__ */ React.createElement("div", { key: d, className: "tx-row" }, /* @__PURE__ */ React.createElement("div", { className: "tx-info" }, shielded ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13 } }, "\u{1F6E1}\uFE0F") : /* @__PURE__ */ React.createElement(Check, { size: 13, color: "var(--accent-green)" }), /* @__PURE__ */ React.createElement("span", null, formatShortDate(d), shielded ? " \xB7 \u0437\u0430\u0449\u0438\u0449\u0435\u043D\u043E \u0438\u043C\u043C\u0443\u043D\u0438\u0442\u0435\u0442\u043E\u043C" : planText)), /* @__PURE__ */ React.createElement("button", { className: "btn-icon", onClick: () => onRemoveEntry(d), "aria-label": "\u0423\u0431\u0440\u0430\u0442\u044C \u043E\u0442\u043C\u0435\u0442\u043A\u0443" }, /* @__PURE__ */ React.createElement(X, { size: 14 })));
+  })));
+}
+function LibraryView({ state, onAdd, onDelete, onMove, onUpdate, onToggleTreasury }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [view, setView] = useState("sections");
+  const monthTaken = !!state.habits.find((h) => h.type === "month");
+  const progressCount = state.habits.filter((h) => h.type === "progress").length;
+  const masteredOnTodayCount = state.habits.filter((h) => h.type === "mastered" && !h.inTreasury).length;
+  const groups = [
+    { key: "month", title: "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043C\u0435\u0441\u044F\u0446\u0430", items: state.habits.filter((h) => h.type === "month") },
+    { key: "progress", title: "\u041D\u0430 \u0434\u043E\u043E\u0441\u0432\u043E\u0435\u043D\u0438\u0438", items: state.habits.filter((h) => h.type === "progress") },
+    { key: "planned", title: "\u0412 \u043F\u043B\u0430\u043D\u0430\u0445", items: state.habits.filter((h) => h.type === "planned") },
+    {
+      key: "mastered",
+      title: "\u041E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435",
+      items: [...state.habits.filter((h) => h.type === "mastered")].sort(
+        (a, b) => (b.masteredAt || "").localeCompare(a.masteredAt || "")
+      )
+    }
+  ];
+  return /* @__PURE__ */ React.createElement("div", { className: "screen" }, /* @__PURE__ */ React.createElement("div", { className: "page-header-row" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0411\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0430"), /* @__PURE__ */ React.createElement("h1", { className: "page-title" }, "\u0422\u0432\u043E\u0438 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438")), /* @__PURE__ */ React.createElement("button", { className: "btn-round", onClick: () => setShowForm(true), "aria-label": "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443" }, /* @__PURE__ */ React.createElement(Plus, { size: 20 }))), state.habits.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "view-toggle" }, /* @__PURE__ */ React.createElement("button", { className: `view-toggle-btn ${view === "sections" ? "view-toggle-btn-active" : ""}`, onClick: () => setView("sections") }, "\u041F\u043E \u0440\u0430\u0437\u0434\u0435\u043B\u0430\u043C"), /* @__PURE__ */ React.createElement("button", { className: `view-toggle-btn ${view === "months" ? "view-toggle-btn-active" : ""}`, onClick: () => setView("months") }, "\u041F\u043E \u043C\u0435\u0441\u044F\u0446\u0430\u043C")), state.habits.length === 0 && /* @__PURE__ */ React.createElement(EmptyState, { text: "\u041F\u043E\u043A\u0430 \u043F\u0443\u0441\u0442\u043E. \u0414\u043E\u0431\u0430\u0432\u044C \u043F\u0435\u0440\u0432\u0443\u044E \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443, \u0447\u0442\u043E\u0431\u044B \u043D\u0430\u0447\u0430\u0442\u044C.", actionLabel: "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443", onAction: () => setShowForm(true) }), view === "sections" && groups.map(
+    (g) => g.items.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "section", key: g.key }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, g.title, g.key === "mastered" && ` \xB7 \u043D\u0430 \u0433\u043B\u0430\u0432\u043D\u043E\u043C ${masteredOnTodayCount}/${MASTERED_TODAY_LIMIT}`), /* @__PURE__ */ React.createElement("div", { className: "stack" }, g.items.map((h) => /* @__PURE__ */ React.createElement(
+      LibraryRow,
+      {
+        key: h.id,
+        habit: h,
+        monthTaken,
+        progressFull: progressCount >= 3,
+        masteredOnTodayFull: masteredOnTodayCount >= MASTERED_TODAY_LIMIT,
+        onDelete: () => onDelete(h.id),
+        onMove: (type) => onMove(h.id, type),
+        onEdit: () => setEditing(h),
+        onToggleTreasury: () => onToggleTreasury(h.id)
+      }
+    ))))
+  ), view === "months" && /* @__PURE__ */ React.createElement(MonthsView, { habits: state.habits, onEdit: (h) => setEditing(h) }), showForm && /* @__PURE__ */ React.createElement(
+    AddHabitModal,
+    {
+      monthTaken,
+      progressFull: progressCount >= 3,
+      onClose: () => setShowForm(false),
+      onSubmit: (h) => {
+        onAdd(h);
+        setShowForm(false);
+      }
+    }
+  ), editing && /* @__PURE__ */ React.createElement(
+    AddHabitModal,
+    {
+      initialHabit: editing,
+      monthTaken,
+      progressFull: progressCount >= 3,
+      onClose: () => setEditing(null),
+      onSubmit: (h) => {
+        onUpdate(editing.id, h);
+        setEditing(null);
+      }
+    }
+  ));
+}
+function statusInfo(habit) {
+  if (habit.type === "month") return { text: "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043C\u0435\u0441\u044F\u0446\u0430", cls: "status-month" };
+  if (habit.type === "progress") return { text: "\u041D\u0430 \u0434\u043E\u043E\u0441\u0432\u043E\u0435\u043D\u0438\u0438", cls: "status-progress" };
+  if (habit.type === "planned") return { text: "\u0412 \u043F\u043B\u0430\u043D\u0430\u0445", cls: "status-treasury" };
+  if (habit.type === "mastered") {
+    return habit.inTreasury ? { text: "\u0412 \u0441\u043E\u043A\u0440\u043E\u0432\u0438\u0449\u043D\u0438\u0446\u0435", cls: "status-treasury" } : { text: "\u041E\u0441\u0432\u043E\u0435\u043D\u0430 \xB7 \u043D\u0430 \u0433\u043B\u0430\u0432\u043D\u043E\u043C", cls: "status-mastered" };
+  }
+  return { text: "", cls: "" };
+}
+function MonthsView({ habits, onEdit }) {
+  const withMonth = habits.filter((h) => h.monthAssignedAt);
+  if (withMonth.length === 0) {
+    return /* @__PURE__ */ React.createElement(EmptyState, { text: "\u041F\u043E\u043A\u0430 \u043D\u0438 \u0443 \u043E\u0434\u043D\u043E\u0439 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u043D\u0435 \u0443\u043A\u0430\u0437\u0430\u043D \u043C\u0435\u0441\u044F\u0446. \u0417\u0430\u043F\u043E\u043B\u043D\u0438 \u043F\u043E\u043B\u0435 \xAB\u041A\u0430\u043A\u043E\u043C\u0443 \u043C\u0435\u0441\u044F\u0446\u0443 \u043F\u0440\u0438\u043D\u0430\u0434\u043B\u0435\u0436\u0438\u0442\xBB \u043F\u0440\u0438 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0438 \u0438\u043B\u0438 \u0440\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0438 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u043C\u0435\u0441\u044F\u0446\u0430." });
+  }
+  const byMonth = {};
+  withMonth.forEach((h) => {
+    const key = h.monthAssignedAt.slice(0, 7);
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(h);
+  });
+  const months = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
+  return /* @__PURE__ */ React.createElement("div", null, months.map((m) => /* @__PURE__ */ React.createElement("div", { className: "section", key: m }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, monthLabel(m)), /* @__PURE__ */ React.createElement("div", { className: "stack" }, byMonth[m].map((h) => {
+    const s = statusInfo(h);
+    return /* @__PURE__ */ React.createElement("button", { key: h.id, className: "month-row", style: { "--habit-color": h.color }, onClick: () => onEdit(h) }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-info" }, /* @__PURE__ */ React.createElement("div", { className: "habit-icon", style: { background: `${h.color}22`, color: h.color } }, h.icon), /* @__PURE__ */ React.createElement("div", { className: "habit-name" }, h.name)), /* @__PURE__ */ React.createElement("span", { className: `status-pill ${s.cls}` }, s.text));
+  })))));
+}
+function LibraryRow({ habit, monthTaken, progressFull, masteredOnTodayFull, onDelete, onMove, onEdit, onToggleTreasury }) {
+  var _a, _b, _c, _d, _e, _f;
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const treasuryDisabled = habit.inTreasury && masteredOnTodayFull;
+  return /* @__PURE__ */ React.createElement("div", { className: "library-row", style: { "--habit-color": habit.color } }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-info" }, /* @__PURE__ */ React.createElement("div", { className: "habit-icon", style: { background: `${habit.color}22`, color: habit.color } }, habit.icon), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "habit-name" }, habit.name), habit.monthAssignedAt && /* @__PURE__ */ React.createElement("div", { className: "habit-month-badge" }, "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043C\u0435\u0441\u044F\u0446\u0430: ", monthLabel(habit.monthAssignedAt)), habit.type === "mastered" && habit.masteredAt && /* @__PURE__ */ React.createElement("div", { className: "habit-month-badge" }, "\u041E\u0441\u0432\u043E\u0435\u043D\u0430: ", monthLabel(habit.masteredAt), " \xB7 ", habit.inTreasury ? "\u0432 \u0441\u043E\u043A\u0440\u043E\u0432\u0438\u0449\u043D\u0438\u0446\u0435" : "\u043D\u0430 \u0433\u043B\u0430\u0432\u043D\u043E\u043C"), (((_a = habit.planA) == null ? void 0 : _a.trim()) || ((_b = habit.planB) == null ? void 0 : _b.trim())) && /* @__PURE__ */ React.createElement("div", { className: "habit-month-badge" }, ((_c = habit.planA) == null ? void 0 : _c.trim()) || "\u041F\u043B\u0430\u043D \u0410", " \xB7 ", ((_d = habit.planB) == null ? void 0 : _d.trim()) || "\u041F\u043B\u0430\u043D \u0411"), ((_e = habit.anchor) == null ? void 0 : _e.trim()) && /* @__PURE__ */ React.createElement("div", { className: "habit-anchor" }, "\u{1F517} ", habit.anchor.trim()), ((_f = habit.purpose) == null ? void 0 : _f.trim()) && /* @__PURE__ */ React.createElement("div", { className: "habit-anchor" }, "\u{1F4AD} ", habit.purpose.trim()))), /* @__PURE__ */ React.createElement("div", { className: "library-actions" }, /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: onEdit }, /* @__PURE__ */ React.createElement(Pencil, { size: 12 }), " \u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C"), habit.type !== "month" && !monthTaken && /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: () => onMove("month") }, /* @__PURE__ */ React.createElement(Star, { size: 12 }), " \u0412 \u043C\u0435\u0441\u044F\u0446"), habit.type !== "progress" && !progressFull && /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: () => onMove("progress") }, /* @__PURE__ */ React.createElement(ArrowLeftCircle, { size: 12 }), " \u0412 \u0434\u043E\u043E\u0441\u0432\u043E\u0435\u043D\u0438\u0435"), habit.type !== "planned" && /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: () => onMove("planned") }, /* @__PURE__ */ React.createElement(Library, { size: 12 }), " \u0412 \u043F\u043B\u0430\u043D\u044B"), habit.type !== "mastered" && /* @__PURE__ */ React.createElement("button", { className: "btn-tiny btn-tiny-accent", onClick: () => onMove("mastered") }, /* @__PURE__ */ React.createElement(Archive, { size: 12 }), " \u0412 \u043E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435"), habit.type === "mastered" && /* @__PURE__ */ React.createElement("button", { className: "btn-tiny btn-tiny-accent", disabled: treasuryDisabled, onClick: onToggleTreasury }, /* @__PURE__ */ React.createElement(Archive, { size: 12 }), " ", habit.inTreasury ? "\u041D\u0430 \u0433\u043B\u0430\u0432\u043D\u044B\u0439" : "\u0412 \u0441\u043E\u043A\u0440\u043E\u0432\u0438\u0449\u043D\u0438\u0446\u0443"), !confirmDelete ? /* @__PURE__ */ React.createElement("button", { className: "btn-tiny btn-tiny-danger", onClick: () => setConfirmDelete(true) }, /* @__PURE__ */ React.createElement(Trash2, { size: 12 })) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { className: "btn-tiny btn-tiny-danger", onClick: onDelete }, "\u0423\u0434\u0430\u043B\u0438\u0442\u044C?"), /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: () => setConfirmDelete(false) }, "\u041E\u0442\u043C\u0435\u043D\u0430"))));
+}
+function AddHabitModal({ onClose, onSubmit, monthTaken, progressFull, initialHabit }) {
+  var _a, _b;
+  const isEdit = !!initialHabit;
+  const [name, setName] = useState((initialHabit == null ? void 0 : initialHabit.name) || "");
+  const [icon, setIcon] = useState((initialHabit == null ? void 0 : initialHabit.icon) || ICONS[0]);
+  const [color, setColor] = useState((initialHabit == null ? void 0 : initialHabit.color) || COLORS[0].hex);
+  const [type, setType] = useState(
+    (initialHabit == null ? void 0 : initialHabit.type) || (monthTaken ? progressFull ? "planned" : "progress" : "month")
+  );
+  const [usePlans, setUsePlans] = useState(!!(((_a = initialHabit == null ? void 0 : initialHabit.planA) == null ? void 0 : _a.trim()) || ((_b = initialHabit == null ? void 0 : initialHabit.planB) == null ? void 0 : _b.trim())));
+  const [planA, setPlanA] = useState((initialHabit == null ? void 0 : initialHabit.planA) || "");
+  const [planB, setPlanB] = useState((initialHabit == null ? void 0 : initialHabit.planB) || "");
+  const [anchor, setAnchor] = useState((initialHabit == null ? void 0 : initialHabit.anchor) || "");
+  const [purpose, setPurpose] = useState((initialHabit == null ? void 0 : initialHabit.purpose) || "");
+  const [monthValue, setMonthValue] = useState(
+    (initialHabit == null ? void 0 : initialHabit.monthAssignedAt) ? initialHabit.monthAssignedAt.slice(0, 7) : thisYearMonth()
+  );
+  const canMonth = !monthTaken || (initialHabit == null ? void 0 : initialHabit.type) === "month";
+  const canProgress = !progressFull || (initialHabit == null ? void 0 : initialHabit.type) === "progress";
+  return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", onClick: onClose }, /* @__PURE__ */ React.createElement("div", { className: "modal", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-header" }, /* @__PURE__ */ React.createElement("h2", null, isEdit ? "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443" : "\u041D\u043E\u0432\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430"), /* @__PURE__ */ React.createElement("button", { className: "btn-icon", onClick: onClose }, /* @__PURE__ */ React.createElement(X, { size: 18 }))), /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      className: "text-input",
+      placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440, \u043F\u0438\u0442\u044C \u0432\u043E\u0434\u0443",
+      value: name,
+      onChange: (e) => setName(e.target.value),
+      maxLength: 40,
+      autoFocus: true
+    }
+  ), /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "\u042F\u043A\u043E\u0440\u044C (\u043D\u0435\u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E)"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      className: "text-input",
+      placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u043F\u043E\u0441\u043B\u0435 \u0442\u043E\u0433\u043E, \u043A\u0430\u043A \u043F\u043E\u0447\u0438\u0449\u0443 \u0437\u0443\u0431\u044B \u0443\u0442\u0440\u043E\u043C",
+      value: anchor,
+      onChange: (e) => setAnchor(e.target.value),
+      maxLength: 80
+    }
+  ), /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u041A\u043E\u0433\u0434\u0430 \u0438 \u043F\u043E\u0441\u043B\u0435 \u0447\u0435\u0433\u043E \u0431\u0443\u0434\u0435\u0442 \u0432\u044B\u043F\u043E\u043B\u043D\u044F\u0442\u044C\u0441\u044F \u044D\u0442\u0430 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u2014 \u043F\u043E\u043C\u043E\u0433\u0430\u0435\u0442 \u043D\u0435 \u0437\u0430\u0431\u044B\u0442\u044C."), /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "\u0417\u0430\u0447\u0435\u043C \u043C\u043D\u0435 \u044D\u0442\u0430 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 (\u043D\u0435\u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E)"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      className: "text-input",
+      placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0447\u0442\u043E\u0431\u044B \u0432\u044B\u0441\u044B\u043F\u0430\u0442\u044C\u0441\u044F \u0438 \u0431\u044B\u0442\u044C \u0431\u043E\u0434\u0440\u0435\u0435",
+      value: purpose,
+      onChange: (e) => setPurpose(e.target.value),
+      maxLength: 100
+    }
+  ), /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "\u0412\u0430\u0440\u0438\u0430\u043D\u0442\u044B \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u044F"), /* @__PURE__ */ React.createElement("button", { className: `toggle-row ${usePlans ? "toggle-row-active" : ""}`, onClick: () => setUsePlans((v) => !v) }, /* @__PURE__ */ React.createElement(Star, { size: 14, fill: usePlans ? "currentColor" : "none" }), "\u041F\u043B\u0430\u043D \u0410 / \u041F\u043B\u0430\u043D \u0411 \u0434\u043B\u044F \u044D\u0442\u043E\u0439 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438"), usePlans && /* @__PURE__ */ React.createElement("div", { className: "plan-inputs" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      className: "text-input",
+      placeholder: "\u041F\u043B\u0430\u043D \u0410, \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 \xAB\u0414\u043E\u043C\u0430\xBB",
+      value: planA,
+      onChange: (e) => setPlanA(e.target.value),
+      maxLength: 30
+    }
+  ), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      className: "text-input",
+      placeholder: "\u041F\u043B\u0430\u043D \u0411, \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 \xAB\u0412 \u0437\u0430\u043B\u0435\xBB",
+      value: planB,
+      onChange: (e) => setPlanB(e.target.value),
+      maxLength: 30
+    }
+  ), /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u041A\u0430\u0436\u0434\u044B\u0439 \u0434\u0435\u043D\u044C \u043C\u043E\u0436\u043D\u043E \u0431\u0443\u0434\u0435\u0442 \u0432\u044B\u0431\u0440\u0430\u0442\u044C \u0437\u0432\u0451\u0437\u0434\u043E\u0447\u043A\u043E\u0439, \u043A\u0430\u043A\u043E\u0439 \u043F\u043B\u0430\u043D \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D.")), /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "\u0418\u043A\u043E\u043D\u043A\u0430"), /* @__PURE__ */ React.createElement("div", { className: "icon-grid" }, ICONS.map((ic) => /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      key: ic,
+      className: `icon-swatch ${icon === ic ? "icon-swatch-active" : ""}`,
+      onClick: () => setIcon(ic)
+    },
+    ic
+  ))), /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "\u0426\u0432\u0435\u0442"), /* @__PURE__ */ React.createElement("div", { className: "color-grid" }, COLORS.map((c) => /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      key: c.id,
+      className: `color-swatch ${color === c.hex ? "color-swatch-active" : ""}`,
+      style: { background: c.hex },
+      onClick: () => setColor(c.hex)
+    }
+  ))), !isEdit && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "\u0420\u0430\u0437\u0434\u0435\u043B"), /* @__PURE__ */ React.createElement("div", { className: "type-options" }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: `type-opt ${type === "month" ? "type-opt-active" : ""}`,
+      disabled: !canMonth,
+      onClick: () => canMonth && setType("month")
+    },
+    "\u041C\u0435\u0441\u044F\u0446\u0430"
+  ), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: `type-opt ${type === "progress" ? "type-opt-active" : ""}`,
+      disabled: !canProgress,
+      onClick: () => canProgress && setType("progress")
+    },
+    "\u0414\u043E\u043E\u0441\u0432\u043E\u0435\u043D\u0438\u0435"
+  ), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: `type-opt ${type === "planned" ? "type-opt-active" : ""}`,
+      onClick: () => setType("planned")
+    },
+    "\u0412 \u043F\u043B\u0430\u043D\u0430\u0445"
+  ), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: `type-opt ${type === "mastered" ? "type-opt-active" : ""}`,
+      onClick: () => setType("mastered")
+    },
+    "\u041E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435"
+  )), !canMonth && /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u0420\u0430\u0437\u0434\u0435\u043B \xAB\u041C\u0435\u0441\u044F\u0446\u0430\xBB \u0437\u0430\u043D\u044F\u0442 \u2014 \u0441\u043D\u0430\u0447\u0430\u043B\u0430 \u043F\u0435\u0440\u0435\u043C\u0435\u0441\u0442\u0438 \u0442\u0435\u043A\u0443\u0449\u0443\u044E \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443.")), type === "month" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "\u041A\u0430\u043A\u043E\u043C\u0443 \u043C\u0435\u0441\u044F\u0446\u0443 \u043F\u0440\u0438\u043D\u0430\u0434\u043B\u0435\u0436\u0438\u0442"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "month",
+      className: "text-input",
+      value: monthValue,
+      onChange: (e) => setMonthValue(e.target.value)
+    }
+  ), /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440, \xAB\u0427\u0442\u0435\u043D\u0438\u0435\xBB \u2014 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043C\u0435\u0441\u044F\u0446\u0430 \u0437\u0430 \u0410\u0432\u0433\u0443\u0441\u0442 2026.")), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: "btn-primary",
+      disabled: !name.trim(),
+      onClick: () => onSubmit({
+        id: (initialHabit == null ? void 0 : initialHabit.id) || uid(),
+        name: name.trim(),
+        icon,
+        color,
+        type,
+        anchor: anchor.trim(),
+        purpose: purpose.trim(),
+        createdAt: (initialHabit == null ? void 0 : initialHabit.createdAt) || todayISO(),
+        masteredAt: initialHabit == null ? void 0 : initialHabit.masteredAt,
+        monthAssignedAt: type === "month" ? monthValue : initialHabit == null ? void 0 : initialHabit.monthAssignedAt,
+        inTreasury: initialHabit == null ? void 0 : initialHabit.inTreasury,
+        planA: usePlans ? planA.trim() : "",
+        planB: usePlans ? planB.trim() : ""
+      })
+    },
+    isEdit ? "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0438\u0437\u043C\u0435\u043D\u0435\u043D\u0438\u044F" : "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443"
+  )));
+}
+function ProfileView({ state, onReset, email, onLogout }) {
+  const [confirmReset, setConfirmReset] = useState(false);
+  const tx = [...state.wallet.transactions].reverse().slice(0, 40);
+  const mastered = [...state.habits.filter((h) => h.type === "mastered")].sort(
+    (a, b) => (b.masteredAt || "").localeCompare(a.masteredAt || "")
+  );
+  return /* @__PURE__ */ React.createElement("div", { className: "screen" }, /* @__PURE__ */ React.createElement("div", { className: "page-header" }, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u041F\u0440\u043E\u0444\u0438\u043B\u044C"), /* @__PURE__ */ React.createElement("h1", { className: "page-title" }, "\u0422\u0432\u043E\u0439 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441"), email && /* @__PURE__ */ React.createElement("p", { className: "hint", style: { marginTop: 4 } }, "\u0412\u0445\u043E\u0434 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D \u043A\u0430\u043A ", email)), /* @__PURE__ */ React.createElement("div", { className: "wallet-hero" }, /* @__PURE__ */ React.createElement(Coins, { size: 26, color: "var(--accent-gold)" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "wallet-hero-num" }, state.wallet.balance), /* @__PURE__ */ React.createElement("div", { className: "wallet-hero-label" }, "\u043C\u043E\u043D\u0435\u0442 \u043D\u0430\u043A\u043E\u043F\u043B\u0435\u043D\u043E"))), /* @__PURE__ */ React.createElement("div", { className: "stats-grid", style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, state.habits.filter((h) => h.type === "mastered").length), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u043E\u0441\u0432\u043E\u0435\u043D\u043E \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A")), /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, state.habits.length), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u0432\u0441\u0435\u0433\u043E \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"))), /* @__PURE__ */ React.createElement("div", { className: "section-label", style: { marginTop: 20 } }, "\u0412\u0441\u0435 \u043E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \xB7 \u0441\u043E\u043A\u0440\u043E\u0432\u0438\u0449\u043D\u0438\u0446\u0430"), mastered.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { text: "\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u043E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0445 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A \u2014 \u043E\u043D\u0438 \u043F\u043E\u044F\u0432\u044F\u0442\u0441\u044F \u0437\u0434\u0435\u0441\u044C, \u043A\u0430\u043A \u0442\u043E\u043B\u044C\u043A\u043E \u0442\u044B \u0438\u0445 \u0437\u0430\u043A\u0440\u0435\u043F\u0438\u0448\u044C." }) : /* @__PURE__ */ React.createElement("div", { className: "stack", style: { marginBottom: 8 } }, mastered.map((h) => /* @__PURE__ */ React.createElement("div", { key: h.id, className: "archive-row", style: { "--habit-color": h.color } }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-info" }, /* @__PURE__ */ React.createElement("div", { className: "habit-icon", style: { background: `${h.color}22`, color: h.color } }, h.icon), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "habit-name" }, h.name), /* @__PURE__ */ React.createElement("div", { className: "habit-month-badge" }, monthLabel(h.masteredAt), " \xB7 ", h.inTreasury ? "\u0432 \u0441\u043E\u043A\u0440\u043E\u0432\u0438\u0449\u043D\u0438\u0446\u0435" : "\u043D\u0430 \u0433\u043B\u0430\u0432\u043D\u043E\u043C"))), /* @__PURE__ */ React.createElement("div", { className: "archive-count" }, logDates(state.logs[h.id] || []).length, " \u0440\u0430\u0437")))), /* @__PURE__ */ React.createElement("div", { className: "section-label", style: { marginTop: 20 } }, "\u0418\u0441\u0442\u043E\u0440\u0438\u044F \u043D\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u0439"), tx.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { text: "\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u043D\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u0439 \u2014 \u043E\u0442\u043C\u0435\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443 \u0441\u0435\u0433\u043E\u0434\u043D\u044F." }) : /* @__PURE__ */ React.createElement("div", { className: "tx-list" }, tx.map((t) => /* @__PURE__ */ React.createElement("div", { key: t.id, className: "tx-row" }, /* @__PURE__ */ React.createElement("div", { className: "tx-info" }, /* @__PURE__ */ React.createElement(Sparkles, { size: 13, color: "var(--accent-gold)" }), /* @__PURE__ */ React.createElement("span", null, t.habitName)), /* @__PURE__ */ React.createElement("div", { className: "tx-meta" }, /* @__PURE__ */ React.createElement("span", { className: "tx-amount" }, "+", t.amount), /* @__PURE__ */ React.createElement("span", { className: "tx-date" }, t.date.slice(5)))))), /* @__PURE__ */ React.createElement("div", { className: "section", style: { marginTop: 24 } }, /* @__PURE__ */ React.createElement("button", { className: "btn-ghost", onClick: onLogout }, "\u0412\u044B\u0439\u0442\u0438 \u0438\u0437 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430")), /* @__PURE__ */ React.createElement("div", { className: "danger-zone" }, !confirmReset ? /* @__PURE__ */ React.createElement("button", { className: "btn-ghost-danger", onClick: () => setConfirmReset(true) }, "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435") : /* @__PURE__ */ React.createElement("div", { className: "reset-confirm" }, /* @__PURE__ */ React.createElement("span", null, "\u042D\u0442\u043E \u0443\u0434\u0430\u043B\u0438\u0442 \u0432\u0441\u0435 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u0438 \u0438\u0441\u0442\u043E\u0440\u0438\u044E \u0431\u0435\u0437 \u0432\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u043E\u0442\u043C\u0435\u043D\u044B."), /* @__PURE__ */ React.createElement("div", { className: "reset-confirm-btns" }, /* @__PURE__ */ React.createElement("button", { className: "btn-ghost-danger", onClick: onReset }, "\u0414\u0430, \u0443\u0434\u0430\u043B\u0438\u0442\u044C \u0432\u0441\u0451"), /* @__PURE__ */ React.createElement("button", { className: "btn-ghost", onClick: () => setConfirmReset(false) }, "\u041E\u0442\u043C\u0435\u043D\u0430")))));
+}
+function LoginScreen() {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const submit = async () => {
+    if (!email.trim()) return;
+    setLoading(true);
+    setError("");
+    const { error: error2 } = await sb.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: window.location.href }
+    });
+    setLoading(false);
+    if (error2) setError(`\u041E\u0448\u0438\u0431\u043A\u0430: ${error2.message || "\u043D\u0435 \u043F\u043E\u043B\u0443\u0447\u0438\u043B\u043E\u0441\u044C \u043E\u0442\u043F\u0440\u0430\u0432\u0438\u0442\u044C \u043F\u0438\u0441\u044C\u043C\u043E"} (\u043A\u043E\u0434: ${error2.status || "?"})`);
+    else setSent(true);
+  };
+  return /* @__PURE__ */ React.createElement("div", { className: "login-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "login-card" }, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0424\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u0442\u0435\u043B\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"), /* @__PURE__ */ React.createElement("h1", { className: "page-title", style: { marginBottom: 16 } }, "\u0412\u0445\u043E\u0434 \u043F\u043E \u043F\u043E\u0447\u0442\u0435"), sent ? /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u041F\u0440\u043E\u0432\u0435\u0440\u044C \u043F\u043E\u0447\u0442\u0443 ", email, " \u2014 \u0442\u0430\u043C \u0441\u0441\u044B\u043B\u043A\u0430 \u0434\u043B\u044F \u0432\u0445\u043E\u0434\u0430. \u041F\u0435\u0440\u0435\u0439\u0434\u0438 \u043F\u043E \u043D\u0435\u0439 \u0432 \u044D\u0442\u043E\u043C \u0436\u0435 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      className: "text-input",
+      type: "email",
+      placeholder: "\u0422\u0432\u043E\u044F \u043F\u043E\u0447\u0442\u0430",
+      value: email,
+      onChange: (e) => setEmail(e.target.value),
+      onKeyDown: (e) => e.key === "Enter" && submit(),
+      autoFocus: true
+    }
+  ), error && /* @__PURE__ */ React.createElement("p", { className: "hint", style: { color: "var(--danger)" } }, error), /* @__PURE__ */ React.createElement("button", { className: "btn-primary", disabled: loading || !email.trim(), onClick: submit }, loading ? "\u041E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u0435\u043C\u2026" : "\u041F\u043E\u043B\u0443\u0447\u0438\u0442\u044C \u0441\u0441\u044B\u043B\u043A\u0443 \u0434\u043B\u044F \u0432\u0445\u043E\u0434\u0430"), /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u0411\u0435\u0437 \u043F\u0430\u0440\u043E\u043B\u044F \u2014 \u043F\u0440\u043E\u0441\u0442\u043E \u0432\u0432\u043E\u0434\u0438\u0448\u044C \u043F\u043E\u0447\u0442\u0443 \u0438 \u043F\u0435\u0440\u0435\u0445\u043E\u0434\u0438\u0448\u044C \u043F\u043E \u0441\u0441\u044B\u043B\u043A\u0435 \u0438\u0437 \u043F\u0438\u0441\u044C\u043C\u0430."))));
+}
+function AdminView() {
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState([]);
+  const [selected, setSelected] = useState(null);
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const [{ data: profiles }, { data: states }] = await Promise.all([
+        sb.from("profiles").select("id, email, created_at"),
+        sb.from("app_state").select("user_id, data, updated_at")
+      ]);
+      const stateByUser = {};
+      (states || []).forEach((s) => {
+        stateByUser[s.user_id] = s;
+      });
+      const merged = (profiles || []).map((p) => {
+        var _a, _b;
+        return {
+          id: p.id,
+          email: p.email,
+          createdAt: p.created_at,
+          data: ((_a = stateByUser[p.id]) == null ? void 0 : _a.data) || null,
+          updatedAt: ((_b = stateByUser[p.id]) == null ? void 0 : _b.updated_at) || null
+        };
+      });
+      setRows(merged);
+      setLoading(false);
+    })();
+  }, []);
+  if (loading) {
+    return /* @__PURE__ */ React.createElement("div", { className: "screen" }, /* @__PURE__ */ React.createElement("div", { className: "page-header" }, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0410\u0434\u043C\u0438\u043D"), /* @__PURE__ */ React.createElement("h1", { className: "page-title" }, "\u0423\u0447\u0430\u0441\u0442\u043D\u0438\u043A\u0438 \u043A\u043B\u0443\u0431\u0430")), /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u2026"));
+  }
+  if (selected) {
+    const row = rows.find((r) => r.id === selected);
+    return /* @__PURE__ */ React.createElement(AdminUserDetail, { row, onBack: () => setSelected(null) });
+  }
+  const today = todayISO();
+  const withData = rows.filter((r) => r.data);
+  const activeToday = withData.filter((r) => {
+    const logs = r.data.logs || {};
+    return Object.values(logs).some(
+      (arr) => (arr || []).some((e) => (typeof e === "string" ? e : e.date) === today)
+    );
+  }).length;
+  const totalMastered = withData.reduce(
+    (sum, r) => sum + (r.data.habits || []).filter((h) => h.type === "mastered").length,
+    0
+  );
+  const avgHabits = withData.length ? withData.reduce((s, r) => s + (r.data.habits || []).length, 0) / withData.length : 0;
+  return /* @__PURE__ */ React.createElement("div", { className: "screen" }, /* @__PURE__ */ React.createElement("div", { className: "page-header" }, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0410\u0434\u043C\u0438\u043D"), /* @__PURE__ */ React.createElement("h1", { className: "page-title" }, "\u0423\u0447\u0430\u0441\u0442\u043D\u0438\u043A\u0438 \u043A\u043B\u0443\u0431\u0430")), /* @__PURE__ */ React.createElement("div", { className: "stats-grid" }, /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, rows.length), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u0432\u0441\u0435\u0433\u043E \u0443\u0447\u0430\u0441\u0442\u043D\u0438\u043A\u043E\u0432")), /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, activeToday), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u0430\u043A\u0442\u0438\u0432\u043D\u044B \u0441\u0435\u0433\u043E\u0434\u043D\u044F"))), /* @__PURE__ */ React.createElement("div", { className: "stats-grid", style: { marginTop: 10 } }, /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, avgHabits.toFixed(1)), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A \u0432 \u0441\u0440\u0435\u0434\u043D\u0435\u043C")), /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, totalMastered), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u043E\u0441\u0432\u043E\u0435\u043D\u043E \u0432\u0441\u0435\u0433\u043E"))), /* @__PURE__ */ React.createElement("div", { className: "section-label", style: { marginTop: 20 } }, "\u0412\u0441\u0435 \u0443\u0447\u0430\u0441\u0442\u043D\u0438\u043A\u0438"), rows.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { text: "\u041F\u043E\u043A\u0430 \u043D\u0438\u043A\u0442\u043E \u043D\u0435 \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043E\u0432\u0430\u043B\u0441\u044F." }) : /* @__PURE__ */ React.createElement("div", { className: "stack" }, rows.map((r) => {
+    var _a, _b;
+    const habits = ((_a = r.data) == null ? void 0 : _a.habits) || [];
+    const logs = ((_b = r.data) == null ? void 0 : _b.logs) || {};
+    const lastDates = Object.values(logs).flat().map((e) => typeof e === "string" ? e : e.date).sort();
+    const lastActive = lastDates.length ? lastDates[lastDates.length - 1] : null;
+    return /* @__PURE__ */ React.createElement("button", { key: r.id, className: "month-row", onClick: () => setSelected(r.id) }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-info" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "habit-name" }, r.email || "\u0431\u0435\u0437 \u043F\u043E\u0447\u0442\u044B"), /* @__PURE__ */ React.createElement("div", { className: "habit-month-badge" }, habits.length, " \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A \xB7 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u044F\u044F \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u044C: ", lastActive ? formatShortDate(lastActive) : "\u043D\u0435\u0442"))), /* @__PURE__ */ React.createElement("span", { className: "status-pill status-mastered" }, habits.filter((h) => h.type === "mastered").length, " \u043E\u0441\u0432\u043E\u0435\u043D\u043E"));
+  })));
+}
+function AdminUserDetail({ row, onBack }) {
+  var _a, _b, _c, _d;
+  if (!row) return null;
+  const habits = ((_a = row.data) == null ? void 0 : _a.habits) || [];
+  const logs = ((_b = row.data) == null ? void 0 : _b.logs) || {};
+  return /* @__PURE__ */ React.createElement("div", { className: "screen" }, /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: onBack, style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement(ArrowLeftCircle, { size: 12 }), " \u041A\u043E \u0432\u0441\u0435\u043C \u0443\u0447\u0430\u0441\u0442\u043D\u0438\u043A\u0430\u043C"), /* @__PURE__ */ React.createElement("div", { className: "page-header" }, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0423\u0447\u0430\u0441\u0442\u043D\u0438\u043A"), /* @__PURE__ */ React.createElement("h1", { className: "page-title" }, row.email || "\u0431\u0435\u0437 \u043F\u043E\u0447\u0442\u044B")), /* @__PURE__ */ React.createElement("div", { className: "stats-grid" }, /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, ((_d = (_c = row.data) == null ? void 0 : _c.wallet) == null ? void 0 : _d.balance) || 0), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u043C\u043E\u043D\u0435\u0442")), /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, habits.length), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"))), /* @__PURE__ */ React.createElement("div", { className: "section-label", style: { marginTop: 20 } }, "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438"), habits.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { text: "\u0423 \u044D\u0442\u043E\u0433\u043E \u0443\u0447\u0430\u0441\u0442\u043D\u0438\u043A\u0430 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A." }) : /* @__PURE__ */ React.createElement("div", { className: "stack" }, habits.map((h) => {
+    const log = logs[h.id] || [];
+    const streak = calcStreak(logDates(log));
+    const total = realEntries(log).length;
+    const s = statusInfo(h);
+    return /* @__PURE__ */ React.createElement("div", { key: h.id, className: "library-row" }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-info" }, /* @__PURE__ */ React.createElement("div", { className: "habit-icon", style: { background: `${h.color}22`, color: h.color } }, h.icon), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "habit-name" }, h.name), /* @__PURE__ */ React.createElement("div", { className: "habit-month-badge" }, "\u0441\u0435\u0440\u0438\u044F ", streak, " \xB7 \u0432\u0441\u0435\u0433\u043E ", total))), /* @__PURE__ */ React.createElement("span", { className: `status-pill ${s.cls}` }, s.text));
+  })));
+}
+function HabitTrackerApp() {
+  var _a, _b;
+  const [session, setSession] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [state, setState] = useState(DEFAULT_STATE);
+  const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState("today");
+  const [saveError, setSaveError] = useState(false);
+  const [today, setToday] = useState(todayISO());
+  useEffect(() => {
+    const checkDay = () => {
+      const now = todayISO();
+      setToday((prev) => prev !== now ? now : prev);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkDay();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", checkDay);
+    const interval = setInterval(checkDay, 6e4);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", checkDay);
+      clearInterval(interval);
+    };
+  }, []);
+  useEffect(() => {
+    sb.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthChecked(true);
+    });
+    const { data: sub } = sb.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  const handleLogout = useCallback(() => {
+    sb.auth.signOut();
+  }, []);
+  useEffect(() => {
+    if (!session) {
+      setLoaded(false);
+      setState(DEFAULT_STATE);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoaded(false);
+      const [{ data: appRow }, { data: profileRow }] = await Promise.all([
+        sb.from("app_state").select("data").eq("user_id", session.user.id).maybeSingle(),
+        sb.from("profiles").select("is_admin").eq("id", session.user.id).maybeSingle()
+      ]);
+      if (cancelled) return;
+      if (appRow && appRow.data && Object.keys(appRow.data).length) {
+        const merged = { ...DEFAULT_STATE, ...appRow.data };
+        merged.habits = migrateTreasury(merged.habits || []);
+        setState(merged);
+      } else {
+        setState(DEFAULT_STATE);
+      }
+      setIsAdmin(!!(profileRow && profileRow.is_admin));
+      setLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [(_a = session == null ? void 0 : session.user) == null ? void 0 : _a.id]);
+  useEffect(() => {
+    if (!loaded || !session) return;
+    (async () => {
+      const { error } = await sb.from("app_state").upsert({ user_id: session.user.id, data: state, updated_at: (/* @__PURE__ */ new Date()).toISOString() });
+      setSaveError(!!error);
+    })();
+  }, [state, loaded, (_b = session == null ? void 0 : session.user) == null ? void 0 : _b.id]);
+  const handleComplete = useCallback((habitId, plan) => {
+    setState((prev) => {
+      const today2 = todayISO();
+      const existingRaw = prev.logs[habitId] || [];
+      if (logDates(existingRaw).includes(today2)) return prev;
+      const habit = prev.habits.find((h) => h.id === habitId);
+      const entry = plan ? { date: today2, plan } : { date: today2 };
+      const newRaw = [...existingRaw, entry];
+      const newLogs = { ...prev.logs, [habitId]: newRaw };
+      const txId = uid();
+      const newWallet = {
+        balance: prev.wallet.balance + 10,
+        transactions: [
+          ...prev.wallet.transactions,
+          { id: txId, amount: 10, habitId, habitName: habit ? habit.name : "", date: today2 }
+        ]
+      };
+      const habits = prev.habits.map(
+        (h) => h.id === habitId ? withImmunityAward(h, logDates(existingRaw), logDates(newRaw)) : h
+      );
+      return { ...prev, habits, logs: newLogs, wallet: newWallet };
+    });
+  }, []);
+  const handleAdd = useCallback((habit) => {
+    setState((prev) => {
+      let toAdd = habit;
+      if (habit.type === "mastered") {
+        const onToday = prev.habits.filter((h) => h.type === "mastered" && !h.inTreasury).length;
+        toAdd = { ...toAdd, inTreasury: onToday >= MASTERED_TODAY_LIMIT };
+      }
+      if (habit.type === "month") {
+        toAdd = { ...toAdd, monthAssignedAt: thisYearMonth() };
+      }
+      return { ...prev, habits: [...prev.habits, toAdd], logs: { ...prev.logs, [toAdd.id]: [] } };
+    });
+  }, []);
+  const handleUpdate = useCallback((habitId, fields) => {
+    setState((prev) => ({
+      ...prev,
+      habits: prev.habits.map((h) => h.id === habitId ? { ...h, ...fields } : h)
+    }));
+  }, []);
+  const handleBackfill = useCallback((habitId, date, plan) => {
+    setState((prev) => {
+      const existingRaw = prev.logs[habitId] || [];
+      if (logDates(existingRaw).includes(date)) return prev;
+      const habit = prev.habits.find((h) => h.id === habitId);
+      const entry = plan ? { date, plan } : { date };
+      const newRaw = [...existingRaw, entry];
+      const newLogs = { ...prev.logs, [habitId]: newRaw };
+      const txId = uid();
+      const newWallet = {
+        balance: prev.wallet.balance + 10,
+        transactions: [
+          ...prev.wallet.transactions,
+          { id: txId, amount: 10, habitId, habitName: habit ? habit.name : "", date }
+        ]
+      };
+      const habits = prev.habits.map(
+        (h) => h.id === habitId ? withImmunityAward(h, logDates(existingRaw), logDates(newRaw)) : h
+      );
+      return { ...prev, habits, logs: newLogs, wallet: newWallet };
+    });
+  }, []);
+  const handleUseImmunity = useCallback((habitId, date) => {
+    setState((prev) => {
+      const habit = prev.habits.find((h) => h.id === habitId);
+      if (!habit || immunityAvailable(habit) <= 0) return prev;
+      const existingRaw = prev.logs[habitId] || [];
+      if (logDates(existingRaw).includes(date)) return prev;
+      const entry = { date, shielded: true };
+      const newRaw = [...existingRaw, entry];
+      const newLogs = { ...prev.logs, [habitId]: newRaw };
+      const habits = prev.habits.map((h) => {
+        if (h.id !== habitId) return h;
+        const awarded = withImmunityAward(h, logDates(existingRaw), logDates(newRaw));
+        return { ...awarded, immunityUsed: (awarded.immunityUsed || 0) + 1 };
+      });
+      return { ...prev, habits, logs: newLogs };
+    });
+  }, []);
+  const handleRemoveEntry = useCallback((habitId, date) => {
+    setState((prev) => {
+      const existingRaw = prev.logs[habitId] || [];
+      const target = existingRaw.find((e) => (typeof e === "string" ? e : e.date) === date);
+      const filtered = existingRaw.filter((e) => (typeof e === "string" ? e : e.date) !== date);
+      const habits = isShielded(target) ? prev.habits.map(
+        (h) => h.id === habitId ? { ...h, immunityUsed: Math.max(0, (h.immunityUsed || 0) - 1) } : h
+      ) : prev.habits;
+      let removed = false;
+      const transactions = [];
+      for (let i = prev.wallet.transactions.length - 1; i >= 0; i--) {
+        const t = prev.wallet.transactions[i];
+        if (!removed && t.habitId === habitId && t.date === date) {
+          removed = true;
+          continue;
+        }
+        transactions.unshift(t);
+      }
+      const balance = removed ? prev.wallet.balance - 10 : prev.wallet.balance;
+      return { ...prev, habits, logs: { ...prev.logs, [habitId]: filtered }, wallet: { balance, transactions } };
+    });
+  }, []);
+  const handleDelete = useCallback((habitId) => {
+    setState((prev) => {
+      const logs = { ...prev.logs };
+      delete logs[habitId];
+      return { ...prev, habits: prev.habits.filter((h) => h.id !== habitId), logs };
+    });
+  }, []);
+  const handleMove = useCallback((habitId, type) => {
+    setState((prev) => {
+      let inTreasury;
+      if (type === "mastered") {
+        const onToday = prev.habits.filter((h) => h.type === "mastered" && !h.inTreasury && h.id !== habitId).length;
+        inTreasury = onToday >= MASTERED_TODAY_LIMIT;
+      }
+      return {
+        ...prev,
+        habits: prev.habits.map(
+          (h) => h.id === habitId ? {
+            ...h,
+            type,
+            masteredAt: type === "mastered" ? todayISO() : h.masteredAt,
+            monthAssignedAt: type === "month" ? thisYearMonth() : h.monthAssignedAt,
+            ...type === "mastered" ? { inTreasury } : {}
+          } : h
+        ),
+        masteredCount: type === "mastered" ? prev.masteredCount + 1 : prev.masteredCount
+      };
+    });
+  }, []);
+  const handleToggleTreasury = useCallback((habitId) => {
+    setState((prev) => {
+      const habit = prev.habits.find((h) => h.id === habitId);
+      if (!habit) return prev;
+      if (habit.inTreasury) {
+        const onToday = prev.habits.filter((h) => h.type === "mastered" && !h.inTreasury).length;
+        if (onToday >= MASTERED_TODAY_LIMIT) return prev;
+      }
+      return {
+        ...prev,
+        habits: prev.habits.map((h) => h.id === habitId ? { ...h, inTreasury: !h.inTreasury } : h)
+      };
+    });
+  }, []);
+  const handleReset = useCallback(() => {
+    setState(DEFAULT_STATE);
+  }, []);
+  return /* @__PURE__ */ React.createElement("div", { className: "app-root" }, /* @__PURE__ */ React.createElement("style", null, `
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+        .app-root {
+          --bg: #EDE3D2;
+          --surface: #F8F2E7;
+          --surface-2: #EFE3CE;
+          --text: #3C2F22;
+          --text-muted: #8C7B64;
+          --accent-gold: #B97B4D;
+          --accent-green: #7C8863;
+          --on-accent: #F8F2E7;
+          --border: rgba(60,47,34,0.09);
+          --border-strong: rgba(60,47,34,0.18);
+          --danger: #A85643;
+
+          font-family: 'Inter', sans-serif;
+          background:
+            radial-gradient(ellipse 120% 55% at 8% -6%, rgba(255,255,255,0.55), transparent 60%),
+            radial-gradient(ellipse 90% 60% at 100% 0%, rgba(184,131,80,0.14), transparent 55%),
+            radial-gradient(ellipse 70% 50% at 90% 100%, rgba(124,136,99,0.12), transparent 60%),
+            var(--bg);
+          color: var(--text);
+          min-height: 100vh;
+          width: 100%;
+          max-width: 480px;
+          margin: 0 auto;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          overflow-x: hidden;
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+        }
+        .app-root * { box-sizing: border-box; }
+        .app-root button { font-family: inherit; cursor: pointer; }
+        .app-root::before {
+          content: "";
+          position: absolute;
+          top: -40px; left: -60px;
+          width: 260px; height: 420px;
+          background: radial-gradient(ellipse at 30% 20%, rgba(124,136,99,0.16), transparent 65%);
+          filter: blur(2px);
+          pointer-events: none;
+          z-index: -1;
+        }
+        .app-root::after {
+          content: "";
+          position: absolute;
+          bottom: -60px; right: -50px;
+          width: 220px; height: 260px;
+          background: radial-gradient(ellipse at 70% 80%, rgba(185,123,77,0.16), transparent 65%);
+          pointer-events: none;
+          z-index: -1;
+        }
+
+        .screen {
+          flex: 1;
+          padding: 24px 20px 100px;
+          overflow-y: auto;
+        }
+
+        .eyebrow {
+          font-family: 'IBM Plex Mono', monospace;
+          font-size: 11px;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--accent-green);
+          margin-bottom: 4px;
+        }
+        .page-title {
+          font-family: 'Fraunces', serif;
+          font-weight: 600;
+          font-size: 26px;
+          line-height: 1.2;
+          margin: 0;
+        }
+        .page-header { margin-bottom: 22px; }
+        .page-header-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          margin-bottom: 22px;
+        }
+
+        .today-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 26px;
+        }
+        .wallet-pill {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          padding: 7px 12px;
+          border-radius: 999px;
+          font-family: 'IBM Plex Mono', monospace;
+          font-size: 13px;
+        }
+
+        .section { margin-bottom: 26px; }
+        .section-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          margin-bottom: 10px;
+        }
+        .stack { display: flex; flex-direction: column; gap: 10px; }
+
+        .habit-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-left: 3px solid var(--habit-color, var(--accent-green));
+          border-radius: 16px;
+          padding: 14px 16px;
+        }
+        .habit-card-big { padding: 20px; }
+        .habit-card-relative { position: relative; }
+        .habit-card-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .habit-card-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .habit-icon {
+          width: 40px; height: 40px;
+          border-radius: 12px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 19px;
+          flex-shrink: 0;
+        }
+        .habit-name { font-size: 15px; font-weight: 500; }
+        .habit-name-big { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
+        .habit-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; }
+
+        .ring-btn {
+          position: relative;
+          background: none; border: none; padding: 0;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .ring-btn:disabled { cursor: default; }
+        .ring-visual {
+          position: relative;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .ring-center {
+          position: absolute; inset: 0;
+          display: flex; align-items: center; justify-content: center;
+        }
+
+        .plan-row {
+          display: flex; gap: 8px;
+          margin-top: 12px;
+        }
+        .plan-chip {
+          flex: 1;
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          background: var(--surface-2);
+          border: 1px solid var(--border);
+          color: var(--text-muted);
+          padding: 8px 10px;
+          border-radius: 10px;
+          font-size: 12.5px;
+        }
+        .plan-chip-active {
+          background: var(--accent-gold);
+          border-color: var(--accent-gold);
+          color: var(--on-accent);
+          font-weight: 600;
+        }
+        .plan-chip:disabled { cursor: default; }
+        .plan-chip:not(.plan-chip-active):disabled { opacity: 0.5; }
+        .plan-chip-emoji { font-size: 14px; line-height: 1; }
+
+        .plan-split {
+          display: flex; justify-content: space-between;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 10px 14px;
+          margin-top: 12px;
+          font-size: 12.5px;
+          color: var(--text-muted);
+        }
+        .plan-split span { display: flex; align-items: center; gap: 5px; color: var(--accent-gold); }
+        .plan-split b { color: var(--text); }
+
+        .immunity-strip {
+          margin-top: 12px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 10px 14px;
+          font-size: 12.5px;
+          color: var(--text-muted);
+        }
+        .immunity-strip b { color: var(--text); }
+
+        .mode-row { display: flex; gap: 8px; margin-top: 12px; }
+        .mode-chip {
+          flex: 1;
+          background: var(--surface-2);
+          border: 1px solid var(--border);
+          color: var(--text-muted);
+          padding: 8px 6px;
+          border-radius: 10px;
+          font-size: 12.5px;
+        }
+        .mode-chip-active { background: var(--accent-green); border-color: var(--accent-green); color: var(--on-accent); font-weight: 600; }
+        .mode-chip:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .week-dot-shielded { background: var(--surface-2); }
+
+        .backfill-form {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          padding: 14px;
+          margin-bottom: 12px;
+        }
+
+        .toggle-row {
+          display: flex; align-items: center; gap: 8px;
+          width: 100%;
+          background: var(--surface);
+          border: 1px solid var(--border-strong);
+          color: var(--text-muted);
+          padding: 11px 13px;
+          border-radius: 10px;
+          font-size: 13.5px;
+        }
+        .toggle-row-active { color: var(--accent-gold); border-color: var(--accent-gold); }
+        .plan-inputs { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+
+        .habit-month-badge {
+          font-size: 11px;
+          color: var(--text-muted);
+          margin-top: 2px;
+        }
+
+        .archive-row {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-left: 3px solid var(--habit-color, var(--accent-green));
+          border-radius: 14px;
+          padding: 12px 14px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .archive-count {
+          font-family: 'IBM Plex Mono', monospace;
+          font-size: 12px;
+          color: var(--text-muted);
+        }
+        .ring-streak-num {
+          font-family: 'IBM Plex Mono', monospace;
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--accent-green);
+        }
+        .ring-streak-num.dim { color: var(--text-muted); }
+
+        .firework-layer {
+          position: absolute;
+          top: 0; right: 20px;
+          width: 0; height: 0;
+          pointer-events: none;
+        }
+        .firework-particle {
+          position: absolute;
+          border-radius: 50%;
+          top: 28px; right: 6px;
+          animation: burst 700ms ease-out forwards;
+          opacity: 1;
+        }
+        @keyframes burst {
+          to { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .firework-particle { animation: none; opacity: 0; }
+        }
+
+        .empty-state {
+          background: var(--surface);
+          border: 1px dashed var(--border-strong);
+          border-radius: 16px;
+          padding: 20px;
+          text-align: center;
+        }
+        .empty-state p { color: var(--text-muted); font-size: 13.5px; margin: 0 0 12px; }
+
+        .btn-ghost {
+          background: none;
+          border: 1px solid var(--border-strong);
+          color: var(--text);
+          padding: 8px 14px;
+          border-radius: 10px;
+          font-size: 13px;
+          display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-ghost-danger {
+          background: none;
+          border: 1px solid rgba(197,107,92,0.35);
+          color: var(--danger);
+          padding: 8px 14px;
+          border-radius: 10px;
+          font-size: 13px;
+        }
+
+        .summary-strip {
+          display: flex; align-items: center; gap: 8px;
+          font-size: 13px; color: var(--text-muted);
+          padding-top: 6px;
+        }
+        .summary-strip b { color: var(--text); }
+
+        .habit-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+        .chip {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          color: var(--text-muted);
+          padding: 7px 12px;
+          border-radius: 999px;
+          font-size: 13px;
+          display: flex; align-items: center; gap: 6px;
+        }
+        .chip-active { background: var(--surface-2); color: var(--text); }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat-tile {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          padding: 16px;
+          text-align: center;
+        }
+        .stat-num {
+          font-family: 'IBM Plex Mono', monospace;
+          font-size: 24px;
+          font-weight: 600;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .stat-label { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; }
+
+        .week-row { display: flex; gap: 6px; align-items: stretch; }
+        .week-dot {
+          flex: 1;
+          aspect-ratio: 1;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 10px;
+          letter-spacing: -0.02em;
+          color: var(--text-muted);
+        }
+        .week-dot-tall {
+          aspect-ratio: auto;
+          min-height: 54px;
+          flex-direction: column;
+          justify-content: center;
+          gap: 2px;
+          padding: 6px 3px;
+        }
+        .week-dot-day { font-weight: 600; }
+        .week-dot-emoji {
+          font-size: 13px;
+          line-height: 1;
+          min-height: 13px;
+        }
+        .week-dot-done {
+          background: var(--accent-green);
+          color: var(--on-accent);
+          border-color: var(--accent-green);
+          font-weight: 700;
+        }
+
+        .btn-round {
+          width: 40px; height: 40px;
+          border-radius: 50%;
+          background: var(--accent-green);
+          border: none;
+          color: var(--on-accent);
+          display: flex; align-items: center; justify-content: center;
+        }
+
+        .view-toggle {
+          display: flex;
+          gap: 6px;
+          margin-bottom: 20px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 4px;
+        }
+        .view-toggle-btn {
+          flex: 1;
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          padding: 8px 0;
+          border-radius: 9px;
+          font-size: 12.5px;
+          font-weight: 500;
+        }
+        .view-toggle-btn-active {
+          background: var(--surface-2);
+          color: var(--text);
+          font-weight: 600;
+        }
+
+        .month-row {
+          width: 100%;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-left: 3px solid var(--habit-color, var(--accent-green));
+          border-radius: 14px;
+          padding: 12px 14px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          text-align: left;
+        }
+        .status-pill {
+          flex-shrink: 0;
+          font-size: 10.5px;
+          font-weight: 600;
+          padding: 5px 9px;
+          border-radius: 999px;
+          white-space: nowrap;
+        }
+        .status-month { background: rgba(185,123,77,0.18); color: var(--accent-gold); }
+        .status-progress { background: rgba(124,136,99,0.18); color: var(--accent-green); }
+        .status-mastered { background: rgba(124,136,99,0.28); color: var(--accent-green); }
+        .status-treasury { background: var(--surface-2); color: var(--text-muted); }
+
+        .library-row {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-left: 3px solid var(--habit-color, var(--accent-green));
+          border-radius: 14px;
+          padding: 12px 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .library-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+        .btn-tiny {
+          background: var(--surface-2);
+          border: 1px solid var(--border);
+          color: var(--text-muted);
+          font-size: 11.5px;
+          padding: 6px 9px;
+          border-radius: 8px;
+          display: inline-flex; align-items: center; gap: 4px;
+        }
+        .btn-tiny-accent { color: var(--accent-gold); }
+        .btn-tiny-danger { color: var(--danger); }
+        .btn-tiny:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .habit-anchor {
+          font-size: 11.5px;
+          color: var(--text-muted);
+          font-style: italic;
+          margin-top: 2px;
+        }
+
+        .modal-overlay {
+          position: fixed; inset: 0;
+          background: rgba(10,14,10,0.6);
+          display: flex; align-items: flex-end; justify-content: center;
+          z-index: 50;
+        }
+        .modal {
+          background: var(--bg);
+          border: 1px solid var(--border-strong);
+          border-radius: 20px 20px 0 0;
+          width: 100%; max-width: 480px;
+          padding: 22px 20px 28px;
+          max-height: 88vh; overflow-y: auto;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .modal-header h2 { font-family: 'Fraunces', serif; font-size: 19px; margin: 0; }
+        .btn-icon { background: none; border: none; color: var(--text-muted); }
+
+        .field-label {
+          display: block;
+          font-size: 12px; font-weight: 600;
+          color: var(--text-muted);
+          text-transform: uppercase; letter-spacing: 0.05em;
+          margin: 16px 0 8px;
+        }
+        .text-input {
+          width: 100%;
+          background: var(--surface);
+          border: 1px solid var(--border-strong);
+          color: var(--text);
+          padding: 11px 13px;
+          border-radius: 10px;
+          font-size: 16px;
+          outline: none;
+        }
+        .text-input:focus { border-color: var(--accent-green); }
+
+        .icon-grid, .color-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .icon-swatch {
+          width: 40px; height: 40px;
+          border-radius: 10px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          font-size: 18px;
+        }
+        .icon-swatch-active { border-color: var(--accent-green); background: var(--surface-2); }
+        .color-swatch {
+          width: 30px; height: 30px;
+          border-radius: 50%;
+          border: 2px solid transparent;
+        }
+        .color-swatch-active { border-color: var(--text); }
+
+        .type-options { display: flex; flex-wrap: wrap; gap: 8px; }
+        .type-opt {
+          flex: 1 1 calc(50% - 4px);
+          min-width: 100px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          color: var(--text-muted);
+          padding: 9px 4px;
+          border-radius: 10px;
+          font-size: 12.5px;
+        }
+        .type-opt-active { background: var(--surface-2); color: var(--text); border-color: var(--accent-green); }
+        .type-opt:disabled { opacity: 0.35; cursor: not-allowed; }
+        .hint { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+        .btn-primary {
+          width: 100%;
+          background: var(--accent-green);
+          color: var(--on-accent);
+          border: none;
+          padding: 13px;
+          border-radius: 12px;
+          font-size: 14.5px;
+          font-weight: 600;
+          margin-top: 22px;
+        }
+        .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .wallet-hero {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 18px;
+          padding: 20px;
+          display: flex; align-items: center; gap: 14px;
+        }
+        .wallet-hero-num { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; }
+        .wallet-hero-label { font-size: 12px; color: var(--text-muted); }
+
+        .tx-list { display: flex; flex-direction: column; gap: 2px; }
+        .tx-row {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 10px 4px;
+          border-bottom: 1px solid var(--border);
+          font-size: 13.5px;
+        }
+        .tx-info { display: flex; align-items: center; gap: 7px; }
+        .tx-meta { display: flex; align-items: center; gap: 10px; }
+        .tx-amount { color: var(--accent-gold); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; }
+        .tx-date { color: var(--text-muted); font-size: 11.5px; font-family: 'IBM Plex Mono', monospace; }
+
+        .danger-zone { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--border); }
+        .reset-confirm { display: flex; flex-direction: column; gap: 10px; }
+        .reset-confirm span { font-size: 12.5px; color: var(--text-muted); }
+        .reset-confirm-btns { display: flex; gap: 8px; }
+
+        .tab-bar {
+          position: fixed;
+          bottom: 0; left: 50%;
+          transform: translateX(-50%);
+          width: 100%; max-width: 480px;
+          background: rgba(248,242,231,0.92);
+          backdrop-filter: blur(10px);
+          border-top: 1px solid var(--border);
+          display: flex;
+          padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+          z-index: 2;
+        }
+        .tab-btn {
+          flex: 1;
+          background: none; border: none;
+          display: flex; flex-direction: column; align-items: center; gap: 4px;
+          color: var(--text-muted);
+          font-size: 10.5px;
+          padding: 4px;
+        }
+        .tab-btn-active { color: var(--accent-green); }
+
+        .save-warning {
+          position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+          background: var(--danger); color: #fff;
+          font-size: 12px; padding: 6px 12px; border-radius: 999px;
+          z-index: 100;
+        }
+
+        .login-wrap {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        .login-card {
+          width: 100%;
+          max-width: 360px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          padding: 28px 24px;
+        }
+
+        .app-root::-webkit-scrollbar { width: 0; }
+      `), !authChecked ? /* @__PURE__ */ React.createElement("div", { className: "screen", style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text-muted)", fontSize: 13 } }, "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u2026")) : !session ? /* @__PURE__ */ React.createElement(LoginScreen, null) : /* @__PURE__ */ React.createElement(React.Fragment, null, saveError && /* @__PURE__ */ React.createElement("div", { className: "save-warning" }, "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u2014 \u043F\u0440\u043E\u0432\u0435\u0440\u044C \u0441\u043E\u0435\u0434\u0438\u043D\u0435\u043D\u0438\u0435"), !loaded ? /* @__PURE__ */ React.createElement("div", { className: "screen", style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text-muted)", fontSize: 13 } }, "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u2026")) : /* @__PURE__ */ React.createElement(React.Fragment, null, tab === "today" && /* @__PURE__ */ React.createElement(TodayView, { state, onComplete: handleComplete, goLibrary: () => setTab("library") }), tab === "stats" && /* @__PURE__ */ React.createElement(
+    StatsView,
+    {
+      state,
+      onBackfill: handleBackfill,
+      onRemoveEntry: handleRemoveEntry,
+      onUseImmunity: handleUseImmunity
+    }
+  ), tab === "library" && /* @__PURE__ */ React.createElement(
+    LibraryView,
+    {
+      state,
+      onAdd: handleAdd,
+      onDelete: handleDelete,
+      onMove: handleMove,
+      onUpdate: handleUpdate,
+      onToggleTreasury: handleToggleTreasury
+    }
+  ), tab === "profile" && /* @__PURE__ */ React.createElement(ProfileView, { state, onReset: handleReset, email: session.user.email, onLogout: handleLogout }), tab === "admin" && isAdmin && /* @__PURE__ */ React.createElement(AdminView, null), /* @__PURE__ */ React.createElement("nav", { className: "tab-bar" }, /* @__PURE__ */ React.createElement("button", { className: `tab-btn ${tab === "today" ? "tab-btn-active" : ""}`, onClick: () => setTab("today") }, /* @__PURE__ */ React.createElement(Home, { size: 19 }), " \u0421\u0435\u0433\u043E\u0434\u043D\u044F"), /* @__PURE__ */ React.createElement("button", { className: `tab-btn ${tab === "stats" ? "tab-btn-active" : ""}`, onClick: () => setTab("stats") }, /* @__PURE__ */ React.createElement(BarChart3, { size: 19 }), " \u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430"), /* @__PURE__ */ React.createElement("button", { className: `tab-btn ${tab === "library" ? "tab-btn-active" : ""}`, onClick: () => setTab("library") }, /* @__PURE__ */ React.createElement(Library, { size: 19 }), " \u0411\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0430"), /* @__PURE__ */ React.createElement("button", { className: `tab-btn ${tab === "profile" ? "tab-btn-active" : ""}`, onClick: () => setTab("profile") }, /* @__PURE__ */ React.createElement(Wallet, { size: 19 }), " \u041F\u0440\u043E\u0444\u0438\u043B\u044C"), isAdmin && /* @__PURE__ */ React.createElement("button", { className: `tab-btn ${tab === "admin" ? "tab-btn-active" : ""}`, onClick: () => setTab("admin") }, /* @__PURE__ */ React.createElement(Sparkles, { size: 19 }), " \u0410\u0434\u043C\u0438\u043D")))));
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(HabitTrackerApp));
+</script>
+</body>
+</html>
