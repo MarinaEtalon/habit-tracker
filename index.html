@@ -13,14 +13,10 @@
 <body>
 <div id="root"></div>
 
-<!-- React + ReactDOM -->
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<!-- Supabase JS: облачное хранилище данных + вход по почте -->
 <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
-<!-- Код приложения уже заранее скомпилирован из JSX в обычный JS —
-     в браузере не происходит никакой транспиляции на лету -->
 <script>
 const { useState, useEffect, useRef, useCallback } = React;
 function Icon({ children, size = 20, color, strokeWidth = 2, fill = "none", viewBox = "0 0 24 24", style }) {
@@ -137,13 +133,35 @@ function realEntries(log) {
   return (log || []).filter((e) => !isShielded(e));
 }
 function immunityAvailable(habit) {
-  return ((habit == null ? void 0 : habit.immunityEarned) || 0) - ((habit == null ? void 0 : habit.immunityUsed) || 0);
+  return Math.max(0, ((habit == null ? void 0 : habit.immunityEarned) || 0) - ((habit == null ? void 0 : habit.immunityUsed) || 0));
+}
+function immunityEarnedFromDates(dateList) {
+  const days = Array.from(new Set(dateList)).sort();
+  let earned = 0;
+  let run = 0;
+  let prev = null;
+  days.forEach((iso) => {
+    const d = /* @__PURE__ */ new Date(iso + "T00:00:00");
+    if (prev && Math.round((d - prev) / 864e5) === 1) {
+      run++;
+    } else {
+      earned += Math.floor(run / IMMUNITY_INTERVAL);
+      run = 1;
+    }
+    prev = d;
+  });
+  earned += Math.floor(run / IMMUNITY_INTERVAL);
+  return earned;
 }
 function withImmunityAward(habit, oldDates, newDates) {
-  const before = Math.floor(calcStreak(oldDates) / IMMUNITY_INTERVAL);
-  const after = Math.floor(calcStreak(newDates) / IMMUNITY_INTERVAL);
-  if (after <= before) return habit;
-  return { ...habit, immunityEarned: (habit.immunityEarned || 0) + (after - before) };
+  const earned = immunityEarnedFromDates(newDates);
+  if (earned === (habit.immunityEarned || 0)) return habit;
+  return { ...habit, immunityEarned: earned };
+}
+function repairImmunity(habits, logs) {
+  return (habits || []).map(
+    (h) => withImmunityAward(h, [], logDates((logs || {})[h.id] || []))
+  );
 }
 function calcStreak(dateList) {
   const set = new Set(dateList);
@@ -752,23 +770,43 @@ function ProfileView({ state, onReset, email, onLogout }) {
   return /* @__PURE__ */ React.createElement("div", { className: "screen" }, /* @__PURE__ */ React.createElement("div", { className: "page-header" }, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u041F\u0440\u043E\u0444\u0438\u043B\u044C"), /* @__PURE__ */ React.createElement("h1", { className: "page-title" }, "\u0422\u0432\u043E\u0439 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441"), email && /* @__PURE__ */ React.createElement("p", { className: "hint", style: { marginTop: 4 } }, "\u0412\u0445\u043E\u0434 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D \u043A\u0430\u043A ", email)), /* @__PURE__ */ React.createElement("div", { className: "wallet-hero" }, /* @__PURE__ */ React.createElement(Coins, { size: 26, color: "var(--accent-gold)" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "wallet-hero-num" }, state.wallet.balance), /* @__PURE__ */ React.createElement("div", { className: "wallet-hero-label" }, "\u043C\u043E\u043D\u0435\u0442 \u043D\u0430\u043A\u043E\u043F\u043B\u0435\u043D\u043E"))), /* @__PURE__ */ React.createElement("div", { className: "stats-grid", style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, state.habits.filter((h) => h.type === "mastered").length), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u043E\u0441\u0432\u043E\u0435\u043D\u043E \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A")), /* @__PURE__ */ React.createElement("div", { className: "stat-tile" }, /* @__PURE__ */ React.createElement("div", { className: "stat-num" }, state.habits.length), /* @__PURE__ */ React.createElement("div", { className: "stat-label" }, "\u0432\u0441\u0435\u0433\u043E \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"))), /* @__PURE__ */ React.createElement("div", { className: "section-label", style: { marginTop: 20 } }, "\u0412\u0441\u0435 \u043E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \xB7 \u0441\u043E\u043A\u0440\u043E\u0432\u0438\u0449\u043D\u0438\u0446\u0430"), mastered.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { text: "\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u043E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0445 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A \u2014 \u043E\u043D\u0438 \u043F\u043E\u044F\u0432\u044F\u0442\u0441\u044F \u0437\u0434\u0435\u0441\u044C, \u043A\u0430\u043A \u0442\u043E\u043B\u044C\u043A\u043E \u0442\u044B \u0438\u0445 \u0437\u0430\u043A\u0440\u0435\u043F\u0438\u0448\u044C." }) : /* @__PURE__ */ React.createElement("div", { className: "stack", style: { marginBottom: 8 } }, mastered.map((h) => /* @__PURE__ */ React.createElement("div", { key: h.id, className: "archive-row", style: { "--habit-color": h.color } }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-info" }, /* @__PURE__ */ React.createElement("div", { className: "habit-icon", style: { background: `${h.color}22`, color: h.color } }, h.icon), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "habit-name" }, h.name), /* @__PURE__ */ React.createElement("div", { className: "habit-month-badge" }, monthLabel(h.masteredAt), " \xB7 ", h.inTreasury ? "\u0432 \u0441\u043E\u043A\u0440\u043E\u0432\u0438\u0449\u043D\u0438\u0446\u0435" : "\u043D\u0430 \u0433\u043B\u0430\u0432\u043D\u043E\u043C"))), /* @__PURE__ */ React.createElement("div", { className: "archive-count" }, logDates(state.logs[h.id] || []).length, " \u0440\u0430\u0437")))), /* @__PURE__ */ React.createElement("div", { className: "section-label", style: { marginTop: 20 } }, "\u0418\u0441\u0442\u043E\u0440\u0438\u044F \u043D\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u0439"), tx.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { text: "\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u043D\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u0439 \u2014 \u043E\u0442\u043C\u0435\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443 \u0441\u0435\u0433\u043E\u0434\u043D\u044F." }) : /* @__PURE__ */ React.createElement("div", { className: "tx-list" }, tx.map((t) => /* @__PURE__ */ React.createElement("div", { key: t.id, className: "tx-row" }, /* @__PURE__ */ React.createElement("div", { className: "tx-info" }, /* @__PURE__ */ React.createElement(Sparkles, { size: 13, color: "var(--accent-gold)" }), /* @__PURE__ */ React.createElement("span", null, t.habitName)), /* @__PURE__ */ React.createElement("div", { className: "tx-meta" }, /* @__PURE__ */ React.createElement("span", { className: "tx-amount" }, "+", t.amount), /* @__PURE__ */ React.createElement("span", { className: "tx-date" }, t.date.slice(5)))))), /* @__PURE__ */ React.createElement("div", { className: "section", style: { marginTop: 24 } }, /* @__PURE__ */ React.createElement("button", { className: "btn-ghost", onClick: onLogout }, "\u0412\u044B\u0439\u0442\u0438 \u0438\u0437 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430")), /* @__PURE__ */ React.createElement("div", { className: "danger-zone" }, !confirmReset ? /* @__PURE__ */ React.createElement("button", { className: "btn-ghost-danger", onClick: () => setConfirmReset(true) }, "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435") : /* @__PURE__ */ React.createElement("div", { className: "reset-confirm" }, /* @__PURE__ */ React.createElement("span", null, "\u042D\u0442\u043E \u0443\u0434\u0430\u043B\u0438\u0442 \u0432\u0441\u0435 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u0438 \u0438\u0441\u0442\u043E\u0440\u0438\u044E \u0431\u0435\u0437 \u0432\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u043E\u0442\u043C\u0435\u043D\u044B."), /* @__PURE__ */ React.createElement("div", { className: "reset-confirm-btns" }, /* @__PURE__ */ React.createElement("button", { className: "btn-ghost-danger", onClick: onReset }, "\u0414\u0430, \u0443\u0434\u0430\u043B\u0438\u0442\u044C \u0432\u0441\u0451"), /* @__PURE__ */ React.createElement("button", { className: "btn-ghost", onClick: () => setConfirmReset(false) }, "\u041E\u0442\u043C\u0435\u043D\u0430")))));
 }
 function LoginScreen() {
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const submit = async () => {
     if (!email.trim()) return;
+    if (mode !== "forgot" && !password) return;
     setLoading(true);
     setError("");
-    const { error: error2 } = await sb.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: window.location.href }
-    });
+    let result;
+    if (mode === "forgot") {
+      result = await sb.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin
+      });
+    } else if (mode === "login") {
+      result = await sb.auth.signInWithPassword({ email: email.trim(), password });
+    } else {
+      result = await sb.auth.signUp({ email: email.trim(), password });
+    }
     setLoading(false);
-    if (error2) setError(`\u041E\u0448\u0438\u0431\u043A\u0430: ${error2.message || "\u043D\u0435 \u043F\u043E\u043B\u0443\u0447\u0438\u043B\u043E\u0441\u044C \u043E\u0442\u043F\u0440\u0430\u0432\u0438\u0442\u044C \u043F\u0438\u0441\u044C\u043C\u043E"} (\u043A\u043E\u0434: ${error2.status || "?"})`);
-    else setSent(true);
+    const { error: error2 } = result;
+    if (error2) {
+      setError(`\u041E\u0448\u0438\u0431\u043A\u0430: ${error2.message || "\u0447\u0442\u043E-\u0442\u043E \u043F\u043E\u0448\u043B\u043E \u043D\u0435 \u0442\u0430\u043A"} (\u043A\u043E\u0434: ${error2.status || "?"})`);
+    } else if (mode === "forgot") {
+      setResetSent(true);
+    }
   };
-  return /* @__PURE__ */ React.createElement("div", { className: "login-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "login-card" }, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0424\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u0442\u0435\u043B\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"), /* @__PURE__ */ React.createElement("h1", { className: "page-title", style: { marginBottom: 16 } }, "\u0412\u0445\u043E\u0434 \u043F\u043E \u043F\u043E\u0447\u0442\u0435"), sent ? /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u041F\u0440\u043E\u0432\u0435\u0440\u044C \u043F\u043E\u0447\u0442\u0443 ", email, " \u2014 \u0442\u0430\u043C \u0441\u0441\u044B\u043B\u043A\u0430 \u0434\u043B\u044F \u0432\u0445\u043E\u0434\u0430. \u041F\u0435\u0440\u0435\u0439\u0434\u0438 \u043F\u043E \u043D\u0435\u0439 \u0432 \u044D\u0442\u043E\u043C \u0436\u0435 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+  const goMode = (m) => {
+    setMode(m);
+    setError("");
+    setResetSent(false);
+  };
+  const title = mode === "login" ? "\u0412\u0445\u043E\u0434" : mode === "register" ? "\u0420\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044F" : "\u0412\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435 \u043F\u0430\u0440\u043E\u043B\u044F";
+  const buttonLabel = loading ? "\u041F\u043E\u0434\u043E\u0436\u0434\u0438\u0442\u0435\u2026" : mode === "login" ? "\u0412\u043E\u0439\u0442\u0438" : mode === "register" ? "\u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043E\u0432\u0430\u0442\u044C\u0441\u044F" : "\u041E\u0442\u043F\u0440\u0430\u0432\u0438\u0442\u044C \u0441\u0441\u044B\u043B\u043A\u0443";
+  return /* @__PURE__ */ React.createElement("div", { className: "login-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "login-card" }, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0424\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u0442\u0435\u043B\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"), /* @__PURE__ */ React.createElement("h1", { className: "page-title", style: { marginBottom: 16 } }, title), mode === "forgot" && resetSent ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u0415\u0441\u043B\u0438 \u0430\u043A\u043A\u0430\u0443\u043D\u0442 \u0441 \u043F\u043E\u0447\u0442\u043E\u0439 ", email, " \u0435\u0441\u0442\u044C, \u043C\u044B \u043E\u0442\u043F\u0440\u0430\u0432\u0438\u043B\u0438 \u0442\u0443\u0434\u0430 \u043F\u0438\u0441\u044C\u043C\u043E \u0441\u043E \u0441\u0441\u044B\u043B\u043A\u043E\u0439. \u041F\u0435\u0440\u0435\u0439\u0434\u0438 \u043F\u043E \u043D\u0435\u0439 \u0438 \u0437\u0430\u0434\u0430\u0439 \u043D\u043E\u0432\u044B\u0439 \u043F\u0430\u0440\u043E\u043B\u044C."), /* @__PURE__ */ React.createElement("p", { className: "hint", style: { cursor: "pointer", textDecoration: "underline" }, onClick: () => goMode("login") }, "\u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043A\u043E \u0432\u0445\u043E\u0434\u0443")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
     "input",
     {
       className: "text-input",
@@ -776,10 +814,65 @@ function LoginScreen() {
       placeholder: "\u0422\u0432\u043E\u044F \u043F\u043E\u0447\u0442\u0430",
       value: email,
       onChange: (e) => setEmail(e.target.value),
+      onKeyDown: (e) => mode === "forgot" && e.key === "Enter" && submit(),
+      autoFocus: true
+    }
+  ), mode !== "forgot" && /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      className: "text-input",
+      type: "password",
+      placeholder: "\u041F\u0430\u0440\u043E\u043B\u044C",
+      value: password,
+      onChange: (e) => setPassword(e.target.value),
+      onKeyDown: (e) => e.key === "Enter" && submit()
+    }
+  ), error && /* @__PURE__ */ React.createElement("p", { className: "hint", style: { color: "var(--danger)" } }, error), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: "btn-primary",
+      disabled: loading || !email.trim() || mode !== "forgot" && !password,
+      onClick: submit
+    },
+    buttonLabel
+  ), mode === "login" && /* @__PURE__ */ React.createElement("p", { className: "hint", style: { cursor: "pointer", textDecoration: "underline" }, onClick: () => goMode("forgot") }, "\u0417\u0430\u0431\u044B\u043B\u0438 \u043F\u0430\u0440\u043E\u043B\u044C?"), /* @__PURE__ */ React.createElement(
+    "p",
+    {
+      className: "hint",
+      style: { cursor: "pointer", textDecoration: "underline" },
+      onClick: () => goMode(mode === "register" ? "login" : mode === "forgot" ? "login" : "register")
+    },
+    mode === "login" ? "\u0415\u0449\u0451 \u043D\u0435\u0442 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430? \u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043E\u0432\u0430\u0442\u044C\u0441\u044F" : "\u0423\u0436\u0435 \u0435\u0441\u0442\u044C \u0430\u043A\u043A\u0430\u0443\u043D\u0442? \u0412\u043E\u0439\u0442\u0438"
+  ))));
+}
+function NewPasswordScreen({ onDone }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const submit = async () => {
+    if (password.length < 6) {
+      setError("\u041F\u0430\u0440\u043E\u043B\u044C \u0434\u043E\u043B\u0436\u0435\u043D \u0431\u044B\u0442\u044C \u043D\u0435 \u043A\u043E\u0440\u043E\u0447\u0435 6 \u0441\u0438\u043C\u0432\u043E\u043B\u043E\u0432");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    const { error: error2 } = await sb.auth.updateUser({ password });
+    setLoading(false);
+    if (error2) setError(`\u041E\u0448\u0438\u0431\u043A\u0430: ${error2.message || "\u043D\u0435 \u043F\u043E\u043B\u0443\u0447\u0438\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C"} (\u043A\u043E\u0434: ${error2.status || "?"})`);
+    else onDone();
+  };
+  return /* @__PURE__ */ React.createElement("div", { className: "login-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "login-card" }, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0424\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u0442\u0435\u043B\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"), /* @__PURE__ */ React.createElement("h1", { className: "page-title", style: { marginBottom: 16 } }, "\u041D\u043E\u0432\u044B\u0439 \u043F\u0430\u0440\u043E\u043B\u044C"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      className: "text-input",
+      type: "password",
+      placeholder: "\u041F\u0440\u0438\u0434\u0443\u043C\u0430\u0439 \u043D\u043E\u0432\u044B\u0439 \u043F\u0430\u0440\u043E\u043B\u044C",
+      value: password,
+      onChange: (e) => setPassword(e.target.value),
       onKeyDown: (e) => e.key === "Enter" && submit(),
       autoFocus: true
     }
-  ), error && /* @__PURE__ */ React.createElement("p", { className: "hint", style: { color: "var(--danger)" } }, error), /* @__PURE__ */ React.createElement("button", { className: "btn-primary", disabled: loading || !email.trim(), onClick: submit }, loading ? "\u041E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u0435\u043C\u2026" : "\u041F\u043E\u043B\u0443\u0447\u0438\u0442\u044C \u0441\u0441\u044B\u043B\u043A\u0443 \u0434\u043B\u044F \u0432\u0445\u043E\u0434\u0430"), /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u0411\u0435\u0437 \u043F\u0430\u0440\u043E\u043B\u044F \u2014 \u043F\u0440\u043E\u0441\u0442\u043E \u0432\u0432\u043E\u0434\u0438\u0448\u044C \u043F\u043E\u0447\u0442\u0443 \u0438 \u043F\u0435\u0440\u0435\u0445\u043E\u0434\u0438\u0448\u044C \u043F\u043E \u0441\u0441\u044B\u043B\u043A\u0435 \u0438\u0437 \u043F\u0438\u0441\u044C\u043C\u0430."))));
+  ), error && /* @__PURE__ */ React.createElement("p", { className: "hint", style: { color: "var(--danger)" } }, error), /* @__PURE__ */ React.createElement("button", { className: "btn-primary", disabled: loading || !password, onClick: submit }, loading ? "\u0421\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u043C\u2026" : "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043F\u0430\u0440\u043E\u043B\u044C")));
 }
 function AdminView() {
   const [loading, setLoading] = useState(true);
@@ -856,6 +949,7 @@ function HabitTrackerApp() {
   var _a, _b;
   const [session, setSession] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [recovering, setRecovering] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [state, setState] = useState(DEFAULT_STATE);
   const [loaded, setLoaded] = useState(false);
@@ -884,7 +978,8 @@ function HabitTrackerApp() {
       setSession(data.session);
       setAuthChecked(true);
     });
-    const { data: sub } = sb.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = sb.auth.onAuthStateChange((event, newSession) => {
+      if (event === "PASSWORD_RECOVERY") setRecovering(true);
       setSession(newSession);
     });
     return () => sub.subscription.unsubscribe();
@@ -909,6 +1004,7 @@ function HabitTrackerApp() {
       if (appRow && appRow.data && Object.keys(appRow.data).length) {
         const merged = { ...DEFAULT_STATE, ...appRow.data };
         merged.habits = migrateTreasury(merged.habits || []);
+        merged.habits = repairImmunity(merged.habits, merged.logs);
         setState(merged);
       } else {
         setState(DEFAULT_STATE);
@@ -1013,9 +1109,11 @@ function HabitTrackerApp() {
       const existingRaw = prev.logs[habitId] || [];
       const target = existingRaw.find((e) => (typeof e === "string" ? e : e.date) === date);
       const filtered = existingRaw.filter((e) => (typeof e === "string" ? e : e.date) !== date);
-      const habits = isShielded(target) ? prev.habits.map(
-        (h) => h.id === habitId ? { ...h, immunityUsed: Math.max(0, (h.immunityUsed || 0) - 1) } : h
-      ) : prev.habits;
+      const habits = prev.habits.map((h) => {
+        if (h.id !== habitId) return h;
+        const refunded = isShielded(target) ? { ...h, immunityUsed: Math.max(0, (h.immunityUsed || 0) - 1) } : h;
+        return withImmunityAward(refunded, [], logDates(filtered));
+      });
       let removed = false;
       const transactions = [];
       for (let i = prev.wallet.transactions.length - 1; i >= 0; i--) {
@@ -1213,7 +1311,7 @@ function HabitTrackerApp() {
           font-size: 19px;
           flex-shrink: 0;
         }
-        .habit-name { font-size: 15px; font-weight: 500; }
+        .habit-name { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; }
         .habit-name-big { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
         .habit-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; }
 
@@ -1707,7 +1805,7 @@ function HabitTrackerApp() {
         }
 
         .app-root::-webkit-scrollbar { width: 0; }
-      `), !authChecked ? /* @__PURE__ */ React.createElement("div", { className: "screen", style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text-muted)", fontSize: 13 } }, "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u2026")) : !session ? /* @__PURE__ */ React.createElement(LoginScreen, null) : /* @__PURE__ */ React.createElement(React.Fragment, null, saveError && /* @__PURE__ */ React.createElement("div", { className: "save-warning" }, "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u2014 \u043F\u0440\u043E\u0432\u0435\u0440\u044C \u0441\u043E\u0435\u0434\u0438\u043D\u0435\u043D\u0438\u0435"), !loaded ? /* @__PURE__ */ React.createElement("div", { className: "screen", style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text-muted)", fontSize: 13 } }, "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u2026")) : /* @__PURE__ */ React.createElement(React.Fragment, null, tab === "today" && /* @__PURE__ */ React.createElement(TodayView, { state, onComplete: handleComplete, goLibrary: () => setTab("library") }), tab === "stats" && /* @__PURE__ */ React.createElement(
+      `), !authChecked ? /* @__PURE__ */ React.createElement("div", { className: "screen", style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text-muted)", fontSize: 13 } }, "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u2026")) : !session ? /* @__PURE__ */ React.createElement(LoginScreen, null) : recovering ? /* @__PURE__ */ React.createElement(NewPasswordScreen, { onDone: () => setRecovering(false) }) : /* @__PURE__ */ React.createElement(React.Fragment, null, saveError && /* @__PURE__ */ React.createElement("div", { className: "save-warning" }, "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u2014 \u043F\u0440\u043E\u0432\u0435\u0440\u044C \u0441\u043E\u0435\u0434\u0438\u043D\u0435\u043D\u0438\u0435"), !loaded ? /* @__PURE__ */ React.createElement("div", { className: "screen", style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text-muted)", fontSize: 13 } }, "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u2026")) : /* @__PURE__ */ React.createElement(React.Fragment, null, tab === "today" && /* @__PURE__ */ React.createElement(TodayView, { state, onComplete: handleComplete, goLibrary: () => setTab("library") }), tab === "stats" && /* @__PURE__ */ React.createElement(
     StatsView,
     {
       state,
