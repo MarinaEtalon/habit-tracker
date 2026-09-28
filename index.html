@@ -4,20 +4,49 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Формирователь привычек</title>
-<meta name="description" content="Привычка месяца, доосвоение, монеты и статистика — с облачным хранением и входом по почте." />
+<meta name="description" content="Привычка месяца, доосвоение, монеты и статистика — с облачным хранением и входом по паролю." />
 <style>
   html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #EDE3D2; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
   #root { min-height: 100vh; width: 100%; }
+  #boot { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; box-sizing: border-box;
+          text-align: center; color: #8a7a66; font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 </style>
+<!-- Шрифты: не блокируют запуск. Если недоступны — приложение работает на обычных шрифтах. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'" />
 </head>
 <body>
-<div id="root"></div>
-
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<div id="root"><div id="boot"><span id="boot-text">Загрузка…</span></div></div>
 
 <script>
+(function () {
+  var bootText = document.getElementById("boot-text");
+  var slowTimer = setTimeout(function () {
+    if (bootText) bootText.textContent = "Загружается дольше обычного… Проверь интернет. Если ничего не меняется — обнови страницу.";
+  }, 12000);
+
+  // [файл на нашем сайте, запасной адрес, имя глобальной переменной]
+  var LIBS = [
+    ["react.production.min.js", "https://unpkg.com/react@18/umd/react.production.min.js", "React"],
+    ["react-dom.production.min.js", "https://unpkg.com/react-dom@18/umd/react-dom.production.min.js", "ReactDOM"],
+    ["supabase.js", "https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js", "supabase"]
+  ];
+
+  function addScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = function () { resolve(); };
+      s.onerror = function () { reject(new Error("load failed: " + src)); };
+      document.head.appendChild(s);
+    });
+  }
+  function loadLib(lib) {
+    return addScript(lib[0])
+      .then(function () { if (!window[lib[2]]) throw new Error("no global " + lib[2]); })
+      .catch(function () { return addScript(lib[1]); });
+  }
+
+  function startApp() {
 const { useState, useEffect, useRef, useCallback } = React;
 function Icon({ children, size = 20, color, strokeWidth = 2, fill = "none", viewBox = "0 0 24 24", style }) {
   return /* @__PURE__ */ React.createElement(
@@ -1175,7 +1204,7 @@ function HabitTrackerApp() {
     setState(DEFAULT_STATE);
   }, []);
   return /* @__PURE__ */ React.createElement("div", { className: "app-root" }, /* @__PURE__ */ React.createElement("style", null, `
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+        /* \u0448\u0440\u0438\u0444\u0442\u044B \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0430\u044E\u0442\u0441\u044F \u0438\u0437 HTML \u0431\u0435\u0437 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438 \u0437\u0430\u043F\u0443\u0441\u043A\u0430 */
 
         .app-root {
           --bg: #EDE3D2;
@@ -1827,8 +1856,17 @@ function HabitTrackerApp() {
 }
 
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(React.createElement(HabitTrackerApp));
+    var root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(React.createElement(HabitTrackerApp));
+  }
+
+  LIBS.reduce(function (p, lib) { return p.then(function () { return loadLib(lib); }); }, Promise.resolve())
+    .then(function () { clearTimeout(slowTimer); startApp(); })
+    .catch(function () {
+      clearTimeout(slowTimer);
+      if (bootText) bootText.textContent = "Не получилось загрузить приложение. Проверь интернет и обнови страницу.";
+    });
+})();
 </script>
 </body>
 </html>
