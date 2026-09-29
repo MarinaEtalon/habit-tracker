@@ -355,23 +355,30 @@ function Firework({ id }) {
     }
   )));
 }
-function HabitCard({ habit, log, big, onComplete }) {
+function HabitCard({ habit, log, big, onComplete, onUseImmunity }) {
   const dates = logDates(log);
   const done = dates.includes(todayISO());
   const streak = calcStreak(dates);
   const [burst, setBurst] = useState(0);
+  const [confirmShield, setConfirmShield] = useState(false);
   const size = big ? 64 : 52;
   const hasPlans = !!(habit.planA && habit.planA.trim()) || !!(habit.planB && habit.planB.trim());
   const todayEntry = (log || []).find((e) => (typeof e === "string" ? e : e.date) === todayISO());
   const todayPlan = todayEntry && typeof todayEntry !== "string" ? todayEntry.plan : null;
+  const shieldsLeft = immunityAvailable(habit);
+  const canShield = !done && shieldsLeft > 0;
   const complete = (plan) => {
     if (done) return;
     setBurst((b) => b + 1);
     onComplete(habit.id, plan);
   };
+  const useShield = () => {
+    onUseImmunity(habit.id, todayISO());
+    setConfirmShield(false);
+  };
   const planALabel = habit.planA && habit.planA.trim() ? habit.planA.trim() : "\u041F\u043B\u0430\u043D \u0410";
   const planBLabel = habit.planB && habit.planB.trim() ? habit.planB.trim() : "\u041F\u043B\u0430\u043D \u0411";
-  return /* @__PURE__ */ React.createElement("div", { className: `habit-card ${big ? "habit-card-big" : ""}`, style: { "--habit-color": habit.color } }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-relative" }, burst > 0 && /* @__PURE__ */ React.createElement(Firework, { id: burst }), /* @__PURE__ */ React.createElement("div", { className: "habit-card-row" }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-info" }, /* @__PURE__ */ React.createElement("div", { className: "habit-icon", style: { background: `${habit.color}22`, color: habit.color } }, habit.icon), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: big ? "habit-name-big" : "habit-name" }, habit.name), /* @__PURE__ */ React.createElement("div", { className: "habit-sub" }, streak > 0 ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Flame, { size: 13, style: { marginRight: 3, position: "relative", top: 2 } }), "\u0441\u0435\u0440\u0438\u044F ", streak, " ", streak === 1 ? "\u0434\u0435\u043D\u044C" : streak < 5 ? "\u0434\u043D\u044F" : "\u0434\u043D\u0435\u0439") : "\u043D\u0430\u0447\u043D\u0438 \u0441\u0435\u0440\u0438\u044E \u0441\u0435\u0433\u043E\u0434\u043D\u044F", immunityAvailable(habit) > 0 && /* @__PURE__ */ React.createElement("span", { className: "immunity-badge" }, " \xB7 \u{1F6E1}\uFE0F\xD7", immunityAvailable(habit))), habit.type === "month" && habit.monthAssignedAt && /* @__PURE__ */ React.createElement("div", { className: "habit-month-badge" }, "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043C\u0435\u0441\u044F\u0446\u0430: ", monthLabel(habit.monthAssignedAt)), habit.anchor && habit.anchor.trim() && /* @__PURE__ */ React.createElement("div", { className: "habit-anchor" }, "\u{1F517} ", habit.anchor.trim()), habit.purpose && habit.purpose.trim() && /* @__PURE__ */ React.createElement("div", { className: "habit-anchor" }, "\u{1F4AD} ", habit.purpose.trim()))), hasPlans ? /* @__PURE__ */ React.createElement(StreakRing, { streak, done, size }) : /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { className: `habit-card ${big ? "habit-card-big" : ""}`, style: { "--habit-color": habit.color } }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-relative" }, burst > 0 && /* @__PURE__ */ React.createElement(Firework, { id: burst }), /* @__PURE__ */ React.createElement("div", { className: "habit-card-row" }, /* @__PURE__ */ React.createElement("div", { className: "habit-card-info" }, /* @__PURE__ */ React.createElement("div", { className: "habit-icon", style: { background: `${habit.color}22`, color: habit.color } }, habit.icon), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: big ? "habit-name-big" : "habit-name" }, habit.name), /* @__PURE__ */ React.createElement("div", { className: "habit-sub" }, streak > 0 ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Flame, { size: 13, style: { marginRight: 3, position: "relative", top: 2 } }), "\u0441\u0435\u0440\u0438\u044F ", streak, " ", streak === 1 ? "\u0434\u0435\u043D\u044C" : streak < 5 ? "\u0434\u043D\u044F" : "\u0434\u043D\u0435\u0439") : "\u043D\u0430\u0447\u043D\u0438 \u0441\u0435\u0440\u0438\u044E \u0441\u0435\u0433\u043E\u0434\u043D\u044F", shieldsLeft > 0 && /* @__PURE__ */ React.createElement("span", { className: "immunity-badge" }, " \xB7 \u{1F6E1}\uFE0F\xD7", shieldsLeft)), habit.type === "month" && habit.monthAssignedAt && /* @__PURE__ */ React.createElement("div", { className: "habit-month-badge" }, "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043C\u0435\u0441\u044F\u0446\u0430: ", monthLabel(habit.monthAssignedAt)), habit.anchor && habit.anchor.trim() && /* @__PURE__ */ React.createElement("div", { className: "habit-anchor" }, "\u{1F517} ", habit.anchor.trim()), habit.purpose && habit.purpose.trim() && /* @__PURE__ */ React.createElement("div", { className: "habit-anchor" }, "\u{1F4AD} ", habit.purpose.trim()))), hasPlans ? /* @__PURE__ */ React.createElement(StreakRing, { streak, done, size }) : /* @__PURE__ */ React.createElement(
     "button",
     {
       className: "ring-btn",
@@ -399,27 +406,27 @@ function HabitCard({ habit, log, big, onComplete }) {
     },
     /* @__PURE__ */ React.createElement("span", { className: "plan-chip-emoji" }, "\u2B50"),
     planBLabel
-  ))));
+  )), canShield && (confirmShield ? /* @__PURE__ */ React.createElement("div", { className: "shield-confirm" }, /* @__PURE__ */ React.createElement("span", null, "\u0417\u0430\u0449\u0438\u0442\u0438\u0442\u044C \u0441\u0435\u0433\u043E\u0434\u043D\u044F\u0448\u043D\u0438\u0439 \u0434\u0435\u043D\u044C \u0438\u043C\u043C\u0443\u043D\u0438\u0442\u0435\u0442\u043E\u043C? \u0421\u0435\u0440\u0438\u044F \u043D\u0435 \u043F\u0440\u0435\u0440\u0432\u0451\u0442\u0441\u044F, \u043D\u043E \u043C\u043E\u043D\u0435\u0442\u044B \u043D\u0435 \u043D\u0430\u0447\u0438\u0441\u043B\u044F\u0442\u0441\u044F."), /* @__PURE__ */ React.createElement("div", { className: "shield-confirm-btns" }, /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: useShield }, "\u{1F6E1}\uFE0F \u0414\u0430, \u0437\u0430\u0449\u0438\u0442\u0438\u0442\u044C"), /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: () => setConfirmShield(false) }, "\u041E\u0442\u043C\u0435\u043D\u0430"))) : /* @__PURE__ */ React.createElement("button", { className: "shield-today-btn", onClick: () => setConfirmShield(true) }, "\u{1F6E1}\uFE0F \u0417\u0430\u0449\u0438\u0442\u0438\u0442\u044C \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u0438\u043C\u043C\u0443\u043D\u0438\u0442\u0435\u0442\u043E\u043C (", shieldsLeft, ")"))));
 }
-function TodayView({ state, onComplete, goLibrary }) {
+function TodayView({ state, onComplete, onUseImmunity, goLibrary }) {
   const month = state.habits.find((h) => h.type === "month");
   const progress = state.habits.filter((h) => h.type === "progress");
   const mastered = state.habits.filter((h) => h.type === "mastered" && !h.inTreasury).sort((a, b) => (b.masteredAt || "").localeCompare(a.masteredAt || "")).slice(0, MASTERED_TODAY_LIMIT);
-  return /* @__PURE__ */ React.createElement("div", { className: "screen" }, /* @__PURE__ */ React.createElement("div", { className: "today-header" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0421\u0435\u0433\u043E\u0434\u043D\u044F"), /* @__PURE__ */ React.createElement("h1", { className: "page-title" }, formatTodayHeader())), /* @__PURE__ */ React.createElement("div", { className: "wallet-pill" }, /* @__PURE__ */ React.createElement(Coins, { size: 15, color: "var(--accent-gold)" }), /* @__PURE__ */ React.createElement("span", null, state.wallet.balance))), /* @__PURE__ */ React.createElement("div", { className: "section" }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043C\u0435\u0441\u044F\u0446\u0430"), month ? /* @__PURE__ */ React.createElement(HabitCard, { habit: month, log: state.logs[month.id] || [], big: true, onComplete }) : /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { className: "screen" }, /* @__PURE__ */ React.createElement("div", { className: "today-header" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "eyebrow" }, "\u0421\u0435\u0433\u043E\u0434\u043D\u044F"), /* @__PURE__ */ React.createElement("h1", { className: "page-title" }, formatTodayHeader())), /* @__PURE__ */ React.createElement("div", { className: "wallet-pill" }, /* @__PURE__ */ React.createElement(Coins, { size: 15, color: "var(--accent-gold)" }), /* @__PURE__ */ React.createElement("span", null, state.wallet.balance))), /* @__PURE__ */ React.createElement("div", { className: "section" }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043C\u0435\u0441\u044F\u0446\u0430"), month ? /* @__PURE__ */ React.createElement(HabitCard, { habit: month, log: state.logs[month.id] || [], big: true, onComplete, onUseImmunity }) : /* @__PURE__ */ React.createElement(
     EmptyState,
     {
       text: "\u041F\u043E\u043A\u0430 \u043D\u0435 \u0432\u044B\u0431\u0440\u0430\u043D\u0430. \u0417\u0430\u0432\u0435\u0434\u0438 \u0433\u043B\u0430\u0432\u043D\u0443\u044E \u0446\u0435\u043B\u044C \u043C\u0435\u0441\u044F\u0446\u0430 \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0435.",
       actionLabel: "\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0443",
       onAction: goLibrary
     }
-  )), /* @__PURE__ */ React.createElement("div", { className: "section" }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, "\u041D\u0430 \u0434\u043E\u043E\u0441\u0432\u043E\u0435\u043D\u0438\u0438 ", progress.length > 0 && `\xB7 ${progress.length}/3`), progress.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "stack" }, progress.map((h) => /* @__PURE__ */ React.createElement(HabitCard, { key: h.id, habit: h, log: state.logs[h.id] || [], onComplete }))) : /* @__PURE__ */ React.createElement(
+  )), /* @__PURE__ */ React.createElement("div", { className: "section" }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, "\u041D\u0430 \u0434\u043E\u043E\u0441\u0432\u043E\u0435\u043D\u0438\u0438 ", progress.length > 0 && `\xB7 ${progress.length}/3`), progress.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "stack" }, progress.map((h) => /* @__PURE__ */ React.createElement(HabitCard, { key: h.id, habit: h, log: state.logs[h.id] || [], onComplete, onUseImmunity }))) : /* @__PURE__ */ React.createElement(
     EmptyState,
     {
       text: "\u0417\u0434\u0435\u0441\u044C \u043F\u043E\u044F\u0432\u044F\u0442\u0441\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u0442\u044B \u0437\u0430\u043A\u0440\u0435\u043F\u043B\u044F\u0435\u0448\u044C \u043F\u043E\u0432\u0442\u043E\u0440\u043D\u043E.",
       actionLabel: "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443",
       onAction: goLibrary
     }
-  )), mastered.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "section" }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, "\u041E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435 \xB7 ", mastered.length, "/", MASTERED_TODAY_LIMIT), /* @__PURE__ */ React.createElement("div", { className: "stack" }, mastered.map((h) => /* @__PURE__ */ React.createElement(HabitCard, { key: h.id, habit: h, log: state.logs[h.id] || [], onComplete }))), /* @__PURE__ */ React.createElement("p", { className: "hint", style: { marginTop: 8 } }, "\u041E\u0442\u043C\u0435\u0447\u0430\u0439 \u043A\u0430\u043A \u043E\u0431\u044B\u0447\u043D\u043E, \u0447\u0442\u043E\u0431\u044B \u043D\u0435 \u0437\u0430\u0431\u044B\u0432\u0430\u0442\u044C. \u0423\u0431\u0440\u0430\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443 \u0441 \u0433\u043B\u0430\u0432\u043D\u043E\u0433\u043E \u044D\u043A\u0440\u0430\u043D\u0430 \u043C\u043E\u0436\u043D\u043E \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0435.")), /* @__PURE__ */ React.createElement("div", { className: "summary-strip" }, /* @__PURE__ */ React.createElement(Archive, { size: 16, color: "var(--text-muted)" }), /* @__PURE__ */ React.createElement("span", null, "\u041E\u0441\u0432\u043E\u0435\u043D\u043E \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A: ", /* @__PURE__ */ React.createElement("b", null, state.habits.filter((h) => h.type === "mastered").length))));
+  )), mastered.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "section" }, /* @__PURE__ */ React.createElement("div", { className: "section-label" }, "\u041E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435 \xB7 ", mastered.length, "/", MASTERED_TODAY_LIMIT), /* @__PURE__ */ React.createElement("div", { className: "stack" }, mastered.map((h) => /* @__PURE__ */ React.createElement(HabitCard, { key: h.id, habit: h, log: state.logs[h.id] || [], onComplete, onUseImmunity }))), /* @__PURE__ */ React.createElement("p", { className: "hint", style: { marginTop: 8 } }, "\u041E\u0442\u043C\u0435\u0447\u0430\u0439 \u043A\u0430\u043A \u043E\u0431\u044B\u0447\u043D\u043E, \u0447\u0442\u043E\u0431\u044B \u043D\u0435 \u0437\u0430\u0431\u044B\u0432\u0430\u0442\u044C. \u0423\u0431\u0440\u0430\u0442\u044C \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443 \u0441 \u0433\u043B\u0430\u0432\u043D\u043E\u0433\u043E \u044D\u043A\u0440\u0430\u043D\u0430 \u043C\u043E\u0436\u043D\u043E \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0435.")), /* @__PURE__ */ React.createElement("div", { className: "summary-strip" }, /* @__PURE__ */ React.createElement(Archive, { size: 16, color: "var(--text-muted)" }), /* @__PURE__ */ React.createElement("span", null, "\u041E\u0441\u0432\u043E\u0435\u043D\u043E \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A: ", /* @__PURE__ */ React.createElement("b", null, state.habits.filter((h) => h.type === "mastered").length))));
 }
 function EmptyState({ text, actionLabel, onAction }) {
   return /* @__PURE__ */ React.createElement("div", { className: "empty-state" }, /* @__PURE__ */ React.createElement("p", null, text), actionLabel && /* @__PURE__ */ React.createElement("button", { className: "btn-ghost", onClick: onAction }, actionLabel, " ", /* @__PURE__ */ React.createElement(ArrowRight, { size: 14 })));
@@ -1528,6 +1535,17 @@ function HabitTrackerApp() {
 
         .week-dot-shielded { background: var(--surface-2); }
 
+        .shield-today-btn {
+          margin-top: 10px; width: 100%; padding: 9px 12px; border-radius: 10px;
+          border: 1px dashed var(--border); background: transparent; color: var(--text-muted);
+          font-size: 12.5px; cursor: pointer; text-align: center;
+        }
+        .shield-today-btn:hover { background: var(--surface-2); color: var(--text); }
+        .shield-confirm {
+          margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2);
+          display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; color: var(--text-muted);
+        }
+        .shield-confirm-btns { display: flex; gap: 8px; }
         .backfill-form {
           background: var(--surface);
           border: 1px solid var(--border);
@@ -1955,7 +1973,7 @@ function HabitTrackerApp() {
     },
     /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text-muted)", fontSize: 14 } }, "\u041D\u0435 \u043F\u043E\u043B\u0443\u0447\u0438\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0442\u0432\u043E\u0438 \u0434\u0430\u043D\u043D\u044B\u0435 \u2014 \u043F\u0440\u043E\u0432\u0435\u0440\u044C \u0441\u043E\u0435\u0434\u0438\u043D\u0435\u043D\u0438\u0435 \u0441 \u0438\u043D\u0442\u0435\u0440\u043D\u0435\u0442\u043E\u043C."),
     /* @__PURE__ */ React.createElement("button", { className: "btn-primary", onClick: () => setRetryTick((t) => t + 1) }, "\u041F\u043E\u043F\u0440\u043E\u0431\u043E\u0432\u0430\u0442\u044C \u0441\u043D\u043E\u0432\u0430")
-  ) : !loaded ? /* @__PURE__ */ React.createElement("div", { className: "screen", style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text-muted)", fontSize: 13 } }, "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u2026")) : /* @__PURE__ */ React.createElement(React.Fragment, null, tab === "today" && /* @__PURE__ */ React.createElement(TodayView, { state, onComplete: handleComplete, goLibrary: () => setTab("library") }), tab === "stats" && /* @__PURE__ */ React.createElement(
+  ) : !loaded ? /* @__PURE__ */ React.createElement("div", { className: "screen", style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text-muted)", fontSize: 13 } }, "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u2026")) : /* @__PURE__ */ React.createElement(React.Fragment, null, tab === "today" && /* @__PURE__ */ React.createElement(TodayView, { state, onComplete: handleComplete, onUseImmunity: handleUseImmunity, goLibrary: () => setTab("library") }), tab === "stats" && /* @__PURE__ */ React.createElement(
     StatsView,
     {
       state,
