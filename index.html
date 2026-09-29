@@ -151,6 +151,17 @@ function formatShortDate(iso) {
   const d = new Date(iso);
   return `${d.getDate()} ${MONTHS_RU[d.getMonth()]}`;
 }
+function datesBetween(startISO, endISO) {
+  const out = [];
+  if (!startISO || !endISO || startISO > endISO) return out;
+  const d = /* @__PURE__ */ new Date(startISO + "T00:00:00");
+  const end = /* @__PURE__ */ new Date(endISO + "T00:00:00");
+  while (d <= end && out.length < 800) {
+    out.push(toISO(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
 function logDates(log) {
   return (log || []).map((entry) => typeof entry === "string" ? entry : entry.date);
 }
@@ -413,7 +424,7 @@ function TodayView({ state, onComplete, goLibrary }) {
 function EmptyState({ text, actionLabel, onAction }) {
   return /* @__PURE__ */ React.createElement("div", { className: "empty-state" }, /* @__PURE__ */ React.createElement("p", null, text), actionLabel && /* @__PURE__ */ React.createElement("button", { className: "btn-ghost", onClick: onAction }, actionLabel, " ", /* @__PURE__ */ React.createElement(ArrowRight, { size: 14 })));
 }
-function StatsView({ state, onBackfill, onRemoveEntry, onUseImmunity }) {
+function StatsView({ state, onBackfill, onBackfillRange, onRemoveEntry, onUseImmunity }) {
   var _a, _b, _c;
   const trackable = state.habits.filter((h) => h.type !== "planned");
   const [filter, setFilter] = useState("active");
@@ -462,14 +473,20 @@ function StatsView({ state, onBackfill, onRemoveEntry, onUseImmunity }) {
       hasPlans,
       immunity,
       onBackfill: (date, plan) => onBackfill(habit.id, date, plan),
+      onBackfillRange: (dates, plan, coins) => onBackfillRange(habit.id, dates, plan, coins),
       onRemoveEntry: (date) => onRemoveEntry(habit.id, date),
       onUseImmunity: (date) => onUseImmunity(habit.id, date)
     }
   ))));
 }
-function HistorySection({ habit, log, hasPlans, immunity, onBackfill, onRemoveEntry, onUseImmunity }) {
-  var _a, _b;
+function HistorySection({ habit, log, hasPlans, immunity, onBackfill, onBackfillRange, onRemoveEntry, onUseImmunity }) {
+  var _a, _b, _c, _d;
   const [showForm, setShowForm] = useState(false);
+  const [showRange, setShowRange] = useState(false);
+  const [rangeFrom, setRangeFrom] = useState("");
+  const [rangeTo, setRangeTo] = useState("");
+  const [rangePlan, setRangePlan] = useState(null);
+  const [rangeCoins, setRangeCoins] = useState(false);
   const [date, setDate] = useState("");
   const [plan, setPlan] = useState(null);
   const [mode, setMode] = useState("done");
@@ -487,6 +504,21 @@ function HistorySection({ habit, log, hasPlans, immunity, onBackfill, onRemoveEn
   });
   const existingDates = new Set(logDates(log));
   const dateTaken = date && existingDates.has(date);
+  const rangeEnd = rangeTo || yesterday;
+  const rangeDays = datesBetween(rangeFrom, rangeEnd);
+  const rangeNew = rangeDays.filter((d) => !existingDates.has(d));
+  const rangeSkipped = rangeDays.length - rangeNew.length;
+  const rangeInvalid = rangeFrom && rangeFrom > rangeEnd;
+  const canSubmitRange = rangeFrom && !rangeInvalid && rangeNew.length > 0 && (!hasPlans || rangePlan);
+  const submitRange = () => {
+    if (!canSubmitRange) return;
+    onBackfillRange(rangeNew, hasPlans ? rangePlan : null, rangeCoins);
+    setRangeFrom("");
+    setRangeTo("");
+    setRangePlan(null);
+    setRangeCoins(false);
+    setShowRange(false);
+  };
   const canSubmitDone = date && !dateTaken && (!hasPlans || plan);
   const canSubmitImmunity = date && !dateTaken && immunity > 0;
   const submit = () => {
@@ -502,7 +534,31 @@ function HistorySection({ habit, log, hasPlans, immunity, onBackfill, onRemoveEn
     setMode("done");
     setShowForm(false);
   };
-  return /* @__PURE__ */ React.createElement("div", { className: "section", style: { marginTop: 20 } }, /* @__PURE__ */ React.createElement("div", { className: "page-header-row", style: { marginBottom: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "section-label", style: { marginBottom: 0 } }, "\u0418\u0441\u0442\u043E\u0440\u0438\u044F"), /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: () => setShowForm((v) => !v) }, /* @__PURE__ */ React.createElement(Plus, { size: 12 }), " \u041F\u0440\u043E\u0448\u0435\u0434\u0448\u0438\u0439 \u0434\u0435\u043D\u044C")), showForm && /* @__PURE__ */ React.createElement("div", { className: "backfill-form" }, noPastDays ? /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u042D\u0442\u0430 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0430 \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u2014 \u043F\u0440\u043E\u0448\u0435\u0434\u0448\u0438\u0445 \u0434\u043D\u0435\u0439 \u0434\u043B\u044F \u043E\u0442\u043C\u0435\u0442\u043A\u0438 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { className: "section", style: { marginTop: 20 } }, /* @__PURE__ */ React.createElement("div", { className: "page-header-row", style: { marginBottom: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "section-label", style: { marginBottom: 0 } }, "\u0418\u0441\u0442\u043E\u0440\u0438\u044F"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6 } }, /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: () => {
+    setShowRange((v) => !v);
+    setShowForm(false);
+  } }, /* @__PURE__ */ React.createElement(Plus, { size: 12 }), " \u041F\u0435\u0440\u0438\u043E\u0434"), /* @__PURE__ */ React.createElement("button", { className: "btn-tiny", onClick: () => {
+    setShowForm((v) => !v);
+    setShowRange(false);
+  } }, /* @__PURE__ */ React.createElement(Plus, { size: 12 }), " \u041F\u0440\u043E\u0448\u0435\u0434\u0448\u0438\u0439 \u0434\u0435\u043D\u044C"))), showRange && /* @__PURE__ */ React.createElement("div", { className: "backfill-form" }, /* @__PURE__ */ React.createElement("p", { className: "hint", style: { marginTop: 0 } }, "\u041E\u0442\u043C\u0435\u0442\u0438\u0442\u044C \u0441\u0440\u0430\u0437\u0443 \u043C\u043D\u043E\u0433\u043E \u0434\u043D\u0435\u0439 \u043F\u043E\u0434\u0440\u044F\u0434: \u0432\u044B\u0431\u0435\u0440\u0438, \u0441 \u043A\u0430\u043A\u043E\u0433\u043E \u0434\u043D\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043D\u0430\u0447\u0430\u043B\u0430\u0441\u044C, \u0438 \u043F\u043E \u043A\u0430\u043A\u043E\u0439 \u0434\u0435\u043D\u044C \u0432\u043A\u043B\u044E\u0447\u0438\u0442\u0435\u043B\u044C\u043D\u043E."), /* @__PURE__ */ React.createElement("label", { className: "hint", style: { display: "block", marginBottom: 4 } }, "\u0421 \u0434\u0430\u0442\u044B"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "date",
+      className: "text-input",
+      value: rangeFrom,
+      max: yesterday,
+      onChange: (e) => setRangeFrom(e.target.value)
+    }
+  ), /* @__PURE__ */ React.createElement("label", { className: "hint", style: { display: "block", margin: "10px 0 4px" } }, "\u041F\u043E \u0434\u0430\u0442\u0443 (\u0432\u043A\u043B\u044E\u0447\u0438\u0442\u0435\u043B\u044C\u043D\u043E)"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "date",
+      className: "text-input",
+      value: rangeTo || yesterday,
+      max: yesterday,
+      onChange: (e) => setRangeTo(e.target.value)
+    }
+  ), /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u0421\u0435\u0433\u043E\u0434\u043D\u044F\u0448\u043D\u0438\u0439 \u0434\u0435\u043D\u044C \u043E\u0442\u043C\u0435\u0447\u0430\u0439 \u043E\u0431\u044B\u0447\u043D\u043E\u0439 \u043A\u043D\u043E\u043F\u043A\u043E\u0439 \u043D\u0430 \u0433\u043B\u0430\u0432\u043D\u043E\u043C \u044D\u043A\u0440\u0430\u043D\u0435."), hasPlans && /* @__PURE__ */ React.createElement("div", { className: "plan-row", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("button", { className: `plan-chip ${rangePlan === "A" ? "plan-chip-active" : ""}`, onClick: () => setRangePlan("A") }, /* @__PURE__ */ React.createElement("span", { className: "plan-chip-emoji" }, "\u{1F947}"), ((_a = habit.planA) == null ? void 0 : _a.trim()) || "\u041F\u043B\u0430\u043D \u0410"), /* @__PURE__ */ React.createElement("button", { className: `plan-chip ${rangePlan === "B" ? "plan-chip-active" : ""}`, onClick: () => setRangePlan("B") }, /* @__PURE__ */ React.createElement("span", { className: "plan-chip-emoji" }, "\u2B50"), ((_b = habit.planB) == null ? void 0 : _b.trim()) || "\u041F\u043B\u0430\u043D \u0411")), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 14, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: rangeCoins, onChange: (e) => setRangeCoins(e.target.checked) }), "\u041D\u0430\u0447\u0438\u0441\u043B\u0438\u0442\u044C \u043C\u043E\u043D\u0435\u0442\u044B \u0437\u0430 \u044D\u0442\u0438 \u0434\u043D\u0438 (+10 \u0437\u0430 \u0434\u0435\u043D\u044C)"), rangeInvalid && /* @__PURE__ */ React.createElement("p", { className: "hint", style: { color: "var(--danger)" } }, "\u0414\u0430\u0442\u0430 \u043D\u0430\u0447\u0430\u043B\u0430 \u043F\u043E\u0437\u0436\u0435 \u0434\u0430\u0442\u044B \u043E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u044F."), rangeFrom && !rangeInvalid && /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u0411\u0443\u0434\u0435\u0442 \u043E\u0442\u043C\u0435\u0447\u0435\u043D\u043E \u0434\u043D\u0435\u0439: ", /* @__PURE__ */ React.createElement("b", null, rangeNew.length), rangeSkipped > 0 ? ` (\u0435\u0449\u0451 ${rangeSkipped} \u0443\u0436\u0435 \u043E\u0442\u043C\u0435\u0447\u0435\u043D\u044B \u2014 \u043F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u043C)` : "", rangeCoins ? `. \u041C\u043E\u043D\u0435\u0442: +${rangeNew.length * 10}.` : ". \u041C\u043E\u043D\u0435\u0442\u044B \u043D\u0435 \u043D\u0430\u0447\u0438\u0441\u043B\u044F\u044E\u0442\u0441\u044F."), hasPlans && rangeFrom && !rangePlan && /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u0412\u044B\u0431\u0435\u0440\u0438 \u043F\u043B\u0430\u043D, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u0437\u0430\u0441\u0447\u0438\u0442\u0430\u0442\u044C \u0437\u0430 \u044D\u0442\u0438 \u0434\u043D\u0438."), /* @__PURE__ */ React.createElement("button", { className: "btn-primary", style: { marginTop: 12 }, disabled: !canSubmitRange, onClick: submitRange }, "\u041E\u0442\u043C\u0435\u0442\u0438\u0442\u044C \u043F\u0435\u0440\u0438\u043E\u0434")), showForm && /* @__PURE__ */ React.createElement("div", { className: "backfill-form" }, noPastDays ? /* @__PURE__ */ React.createElement("p", { className: "hint" }, "\u042D\u0442\u0430 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0430 \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u2014 \u043F\u0440\u043E\u0448\u0435\u0434\u0448\u0438\u0445 \u0434\u043D\u0435\u0439 \u0434\u043B\u044F \u043E\u0442\u043C\u0435\u0442\u043A\u0438 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
     "input",
     {
       type: "date",
@@ -529,7 +585,7 @@ function HistorySection({ habit, log, hasPlans, immunity, onBackfill, onRemoveEn
       onClick: () => setPlan("A")
     },
     /* @__PURE__ */ React.createElement("span", { className: "plan-chip-emoji" }, "\u{1F947}"),
-    ((_a = habit.planA) == null ? void 0 : _a.trim()) || "\u041F\u043B\u0430\u043D \u0410"
+    ((_c = habit.planA) == null ? void 0 : _c.trim()) || "\u041F\u043B\u0430\u043D \u0410"
   ), /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -537,7 +593,7 @@ function HistorySection({ habit, log, hasPlans, immunity, onBackfill, onRemoveEn
       onClick: () => setPlan("B")
     },
     /* @__PURE__ */ React.createElement("span", { className: "plan-chip-emoji" }, "\u2B50"),
-    ((_b = habit.planB) == null ? void 0 : _b.trim()) || "\u041F\u043B\u0430\u043D \u0411"
+    ((_d = habit.planB) == null ? void 0 : _d.trim()) || "\u041F\u043B\u0430\u043D \u0411"
   )), /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -1114,6 +1170,38 @@ function HabitTrackerApp() {
         (h) => h.id === habitId ? withImmunityAward(h, logDates(existingRaw), logDates(newRaw)) : h
       );
       return { ...prev, habits, logs: newLogs, wallet: newWallet };
+    });
+  }, []);
+  const handleBackfillRange = useCallback((habitId, dates, plan, awardCoins) => {
+    setState((prev) => {
+      const existingRaw = prev.logs[habitId] || [];
+      const have = new Set(logDates(existingRaw));
+      const fresh = (dates || []).filter((d) => !have.has(d));
+      if (fresh.length === 0) return prev;
+      const habit = prev.habits.find((h) => h.id === habitId);
+      const newEntries = fresh.map((date) => plan ? { date, plan } : { date });
+      const newRaw = [...existingRaw, ...newEntries];
+      const newLogs = { ...prev.logs, [habitId]: newRaw };
+      const earliest = [...fresh].sort()[0];
+      const habits = prev.habits.map((h) => {
+        if (h.id !== habitId) return h;
+        const withDate = !h.createdAt || earliest < h.createdAt ? { ...h, createdAt: earliest } : h;
+        return withImmunityAward(withDate, logDates(existingRaw), logDates(newRaw));
+      });
+      const wallet = awardCoins ? {
+        balance: prev.wallet.balance + 10 * fresh.length,
+        transactions: [
+          ...prev.wallet.transactions,
+          ...fresh.map((date) => ({
+            id: uid(),
+            amount: 10,
+            habitId,
+            habitName: habit ? habit.name : "",
+            date
+          }))
+        ]
+      } : prev.wallet;
+      return { ...prev, habits, logs: newLogs, wallet };
     });
   }, []);
   const handleUseImmunity = useCallback((habitId, date) => {
@@ -1839,6 +1927,7 @@ function HabitTrackerApp() {
     {
       state,
       onBackfill: handleBackfill,
+      onBackfillRange: handleBackfillRange,
       onRemoveEntry: handleRemoveEntry,
       onUseImmunity: handleUseImmunity
     }
